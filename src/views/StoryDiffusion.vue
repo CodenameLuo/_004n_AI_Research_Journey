@@ -187,7 +187,7 @@
         <div class="section-title">
           <h2>🖼️ 生成预览</h2>
         </div>
-        
+
         <!-- 右上角操作按钮 -->
         <div class="preview-corner-actions">
           <div class="corner-button download-btn" @click="downloadAllImages" title="批量下载">
@@ -1467,7 +1467,7 @@ const burstBubble = (event) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 
+  box-shadow:
     0px 6px 12px rgba(255, 99, 71, 0.4),
     0px 3px 6px rgba(255, 140, 66, 0.3),
     inset 0px 2px 0px rgba(255, 255, 255, 0.3);
@@ -1497,7 +1497,7 @@ const burstBubble = (event) => {
 }
 
 .corner-button:hover {
-  box-shadow: 
+  box-shadow:
     0px 8px 16px rgba(255, 99, 71, 0.5),
     0px 4px 8px rgba(255, 140, 66, 0.4),
     inset 0px 2px 0px rgba(255, 255, 255, 0.4);
@@ -1505,7 +1505,7 @@ const burstBubble = (event) => {
 
 .corner-button:active {
   transform: translateY(-1px) scale(1.02);
-  box-shadow: 
+  box-shadow:
     0px 4px 8px rgba(0, 0, 0, 0.2),
     0px 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -1733,59 +1733,59 @@ const burstBubble = (event) => {
     gap: 10px;
   }
 
-    /* 移动端装饰元素优化 */
+  /* 移动端装饰元素优化 */
   .decoration-circle {
     opacity: 0.6;
   }
-  
+
   .circle-1 {
     width: 60px;
     height: 60px;
   }
-  
+
   .circle-2 {
     width: 45px;
     height: 45px;
   }
-  
+
   .triangle-1 {
     border-left-width: 20px;
     border-right-width: 20px;
     border-bottom-width: 35px;
   }
-  
+
   .triangle-2 {
     border-left-width: 15px;
     border-right-width: 15px;
     border-bottom-width: 26px;
   }
-  
+
   .decoration-star {
     font-size: 1.2rem;
   }
-  
+
   .light-rays {
     width: 400px;
     height: 400px;
   }
-  
+
   .ray {
     height: 100px;
   }
-  
+
   /* 移动端右上角按钮优化 */
   .preview-corner-actions {
     top: 12px;
     right: 12px;
     gap: 8px;
   }
-  
+
   .corner-button {
     width: 42px;
     height: 42px;
     border-width: 2px;
   }
-  
+
   .corner-button .el-icon {
     font-size: 1.1rem;
   }
@@ -1823,20 +1823,20 @@ const burstBubble = (event) => {
   .ray {
     height: 60px;
   }
-  
+
   /* 超小屏幕右上角按钮优化 */
   .preview-corner-actions {
     top: 10px;
     right: 10px;
     gap: 6px;
   }
-  
+
   .corner-button {
     width: 36px;
     height: 36px;
     border-width: 2px;
   }
-  
+
   .corner-button .el-icon {
     font-size: 1rem;
   }
