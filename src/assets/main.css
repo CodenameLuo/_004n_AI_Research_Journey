@@ -1,0 +1,17 @@
+@import './base.css';
+
+/* 加载本地可爱字体 */
+@font-face {
+  font-family: 'CuteFont64';
+  src: url('./64_fonts.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+a,
+.green {
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+}
+
