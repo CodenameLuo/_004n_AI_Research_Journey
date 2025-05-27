@@ -157,12 +157,33 @@
           </div>
           <div class="form-item">
             <label>图片风格</label>
-            <select v-model="userInfo.style" class="cartoon-select">
-              <option value="" disabled>请选择图片风格</option>
-              <option v-for="option in styleOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+            <div class="custom-select-wrapper">
+              <div 
+                class="custom-select" 
+                :class="{ 'is-open': isStyleSelectOpen }"
+                @click="toggleStyleSelect"
+              >
+                <div class="select-display">
+                  {{ userInfo.style ? styleOptions.find(opt => opt.value === userInfo.style)?.label : '请选择图片风格' }}
+                </div>
+                <div class="select-arrow">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 10l5 5 5-5z"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="select-options" v-show="isStyleSelectOpen">
+                <div 
+                  class="select-option"
+                  :class="{ 'is-selected': userInfo.style === option.value }"
+                  v-for="option in styleOptions" 
+                  :key="option.value"
+                  @click="selectStyle(option.value)"
+                >
+                  {{ option.label }}
+                </div>
+              </div>
+            </div>
           </div>
           <div class="form-item">
             <label>图片描述</label>
@@ -261,7 +282,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import Gallery from '../components/Gallery.vue'
 import { Plus, Delete, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
@@ -295,6 +316,9 @@ const recordingIndex = ref(-1)
 const recognition = ref(null)
 const isRecognitionSupported = ref(false)
 const isRecognitionActive = ref(false)
+
+// 自定义下拉菜单状态
+const isStyleSelectOpen = ref(false)
 
 // 风格选项
 const styleOptions = [
@@ -405,6 +429,16 @@ const shareImage = (url) => {
 
 const shareAllImages = () => {
   ElMessage.info('批量分享功能即将上线！')
+}
+
+// 自定义下拉菜单方法
+const toggleStyleSelect = () => {
+  isStyleSelectOpen.value = !isStyleSelectOpen.value
+}
+
+const selectStyle = (value) => {
+  userInfo.style = value
+  isStyleSelectOpen.value = false
 }
 
 // 语音识别功能初始化
@@ -567,9 +601,23 @@ const burstBubble = (event) => {
   }, 300)
 }
 
+// 点击外部关闭下拉菜单
+const handleClickOutside = (event) => {
+  const selectWrapper = event.target.closest('.custom-select-wrapper')
+  if (!selectWrapper) {
+    isStyleSelectOpen.value = false
+  }
+}
+
 // 组件挂载时初始化语音识别
 onMounted(() => {
   initSpeechRecognition()
+  document.addEventListener('click', handleClickOutside)
+})
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -2208,6 +2256,33 @@ onMounted(() => {
   .voice-input-btn .el-icon {
     font-size: 0.9rem;
   }
+
+  /* 移动端下拉菜单优化 */
+  .cartoon-select {
+    font-size: 1rem;
+    padding: 0.7em 0.9em;
+    background-size: 1.1em;
+    padding-right: 2.3em;
+  }
+
+  .cartoon-select option {
+    font-size: 1.2rem;
+    padding: 14px 16px;
+    min-height: 50px;
+  }
+
+  /* 移动端自定义下拉菜单优化 */
+  .custom-select {
+    font-size: 1rem;
+    padding: 0.7em 0.9em;
+    min-height: 42px;
+  }
+
+  .select-option {
+    font-size: 1.2rem;
+    padding: 14px 16px;
+    min-height: 50px;
+  }
 }
 
 /* 标题icon装饰 */
@@ -2275,64 +2350,267 @@ onMounted(() => {
 }
 
 .cartoon-select:focus {
-  border-color: #ffb347;
-  box-shadow: 0 0 0 4px #ffe4b5, 0 2px 6px #ffd700;
+  border-color: #ff8c42;
+  box-shadow: 0 0 0 4px rgba(255, 179, 71, 0.4), 0 4px 12px rgba(255, 215, 0, 0.6);
   outline: none;
   background-color: #fff8dc;
+  transform: translateY(-1px);
 }
 
 .cartoon-select:hover {
   background-color: #fff8dc;
-  transform: translateY(-1px);
-  box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1), 0px 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: #ffb347;
+  transform: translateY(-2px);
+  box-shadow: 
+    inset 0px 2px 4px rgba(0, 0, 0, 0.1), 
+    0px 6px 12px rgba(255, 140, 66, 0.3),
+    0px 2px 6px rgba(255, 215, 0, 0.4);
 }
 
-/* 优化下拉菜单选项样式 - 更大更协调 */
+/* 优化下拉菜单选项样式 - 提高可用性和协调性 */
 .cartoon-select option {
   background: #fff8dc;
   color: #8b4513;
   font-weight: 700;
-  font-size: 1.2rem;
-  padding: 15px 20px;
-  border-radius: 8px;
-  margin: 2px 0;
-  letter-spacing: 0.5px;
+  font-size: 1.4rem;
+  padding: 16px 20px;
   line-height: 1.8;
-  min-height: 45px;
-  text-shadow: 0.5px 0.5px 0px rgba(255, 215, 0, 0.3);
+  border-bottom: 1px solid #f7a985;
+  cursor: pointer;
+  min-height: 55px;
+  display: flex;
+  align-items: center;
 }
 
-/* 悬浮状态 - 温暖的卡通色系 */
 .cartoon-select option:hover {
-  background: linear-gradient(135deg, #fffacd 0%, #ffe4b5 100%);
-  color: #ff6347;
-  font-weight: 800;
-  text-shadow: 1px 1px 0px rgba(255, 215, 0, 0.6);
-  transform: scale(1.02);
-  transition: all 0.2s ease;
-  border: 2px solid #ffb347;
-  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
-}
-
-/* 选中状态 - 更鲜艳的卡通配色 */
-.cartoon-select option:checked {
-  background: linear-gradient(135deg, #ff8c42 0%, #ffb347 100%);
-  color: #fff;
+  background: #ffb347 !important;
+  background-color: #ffb347 !important;
+  color: #fff !important;
   font-weight: 800;
   text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
-  border: 2px solid #f7a985;
-  box-shadow: 
-    0 3px 10px rgba(255, 99, 71, 0.4),
-    inset 0 1px 0px rgba(255, 255, 255, 0.3);
 }
 
-/* 选中且悬浮状态 */
-.cartoon-select option:checked:hover {
-  background: linear-gradient(135deg, #ffb347 0%, #ffd700 100%);
-  transform: scale(1.03);
+.cartoon-select option:checked,
+.cartoon-select option:selected {
+  background: #ff8c42 !important;
+  background-color: #ff8c42 !important;
+  color: #fff !important;
+  font-weight: 800;
+  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.cartoon-select option:focus {
+  background: #ffb347 !important;
+  background-color: #ffb347 !important;
+  color: #fff !important;
+  outline: 2px solid #ffd700;
+  outline-offset: -2px;
+}
+
+/* 强制覆盖浏览器默认样式 */
+.cartoon-select option:hover,
+.cartoon-select option:focus,
+.cartoon-select option:active {
+  background: #ffb347 !important;
+  background-color: #ffb347 !important;
+  color: #fff !important;
+}
+
+.cartoon-select option:checked:hover,
+.cartoon-select option:selected:hover {
+  background: #ff8c42 !important;
+  background-color: #ff8c42 !important;
+  color: #fff !important;
+}
+
+.cartoon-select option:disabled {
+  background: #f5f5dc !important;
+  background-color: #f5f5dc !important;
+  color: #cd853f !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 额外的强制样式覆盖 - 针对不同浏览器 */
+.cartoon-select option {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.cartoon-select option:hover,
+.cartoon-select option:focus-visible,
+.cartoon-select option:focus {
+  background: #ffb347 !important;
+  background-color: #ffb347 !important;
+  color: #fff !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* 针对 WebKit 浏览器的特殊处理 */
+@supports (-webkit-appearance: none) {
+  .cartoon-select option:hover {
+    background: #ffb347 !important;
+    background-color: #ffb347 !important;
+    color: #fff !important;
+  }
+}
+
+/* 针对 Firefox 的特殊处理 */
+@-moz-document url-prefix() {
+  .cartoon-select option:hover {
+    background: #ffb347 !important;
+    background-color: #ffb347 !important;
+    color: #fff !important;
+  }
+}
+
+/* 自定义下拉菜单样式 */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select {
+  border: 4px solid #f7a985;
+  border-radius: 20px;
+  background: #fffacd;
+  color: #8b4513;
+  font-weight: 700;
+  box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.8em 1em;
+  font-size: 1.1rem;
+  width: 100%;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+}
+
+.custom-select:hover {
+  background-color: #fff8dc;
+  border-color: #ffb347;
+  transform: translateY(-2px);
   box-shadow: 
-    0 4px 12px rgba(255, 99, 71, 0.5),
-    inset 0 1px 0px rgba(255, 255, 255, 0.4);
+    inset 0px 2px 4px rgba(0, 0, 0, 0.1), 
+    0px 6px 12px rgba(255, 140, 66, 0.3),
+    0px 2px 6px rgba(255, 215, 0, 0.4);
+}
+
+.custom-select.is-open {
+  border-color: #ff8c42;
+  box-shadow: 0 0 0 4px rgba(255, 179, 71, 0.4), 0 4px 12px rgba(255, 215, 0, 0.6);
+  background-color: #fff8dc;
+  transform: translateY(-1px);
+}
+
+.select-display {
+  flex: 1;
+  text-align: left;
+}
+
+.select-arrow {
+  color: #ff8c42;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.custom-select.is-open .select-arrow {
+  transform: rotate(180deg);
+}
+
+.select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff8dc;
+  border: 4px solid #ff8c42;
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.select-option {
+  background: #fff8dc;
+  color: #8b4513;
+  font-weight: 700;
+  font-size: 1.4rem;
+  padding: 16px 20px;
+  line-height: 1.8;
+  border-bottom: 1px solid #f7a985;
+  cursor: pointer;
+  min-height: 55px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-option:last-child {
+  border-bottom: none;
+  border-radius: 0 0 16px 16px;
+}
+
+.select-option:hover {
+  background: #ffb347 !important;
+  background-color: #ffb347 !important;
+  color: #fff !important;
+  font-weight: 800;
+  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
+  transform: scale(1.02);
+}
+
+.select-option.is-selected {
+  background: #ff8c42 !important;
+  background-color: #ff8c42 !important;
+  color: #fff !important;
+  font-weight: 800;
+  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.select-option.is-selected:hover {
+  background: #ff6347 !important;
+  background-color: #ff6347 !important;
+}
+
+/* 自定义滚动条样式 */
+.select-options::-webkit-scrollbar {
+  width: 8px;
+}
+
+.select-options::-webkit-scrollbar-track {
+  background: rgba(255, 215, 0, 0.2);
+  border-radius: 4px;
+}
+
+.select-options::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff8c42, #ffb347);
+  border-radius: 4px;
+  border: 1px solid #f7a985;
+}
+
+.select-options::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ffb347, #ffd700);
 }
 
 /* 原生文本域卡通立体样式 */
