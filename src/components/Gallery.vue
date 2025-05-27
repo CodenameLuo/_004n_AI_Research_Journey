@@ -66,23 +66,75 @@
       <p>快来上面创作你的第一个故事吧！</p>
     </div>
 
-    <!-- 图片预览对话框 -->
-    <el-dialog
-      v-model="isPreviewVisible"
-      title="图片预览"
-      width="50%"
-      center
-    >
-      <div class="image-preview-container" v-if="selectedImage">
-        <img :src="selectedImage" alt="预览" class="preview-image" />
+    <!-- 自定义精致图片预览弹出框 -->
+    <div v-if="isPreviewVisible" class="custom-preview-overlay" @click="closePreview">
+      <div class="custom-preview-container" @click.stop>
+        <!-- 装饰背景 -->
+        <div class="preview-decorations">
+          <div class="decoration-star star-1">✦</div>
+          <div class="decoration-star star-2">✧</div>
+          <div class="decoration-star star-3">✦</div>
+          <div class="decoration-star star-4">✧</div>
+          <div class="decoration-circle circle-1"></div>
+          <div class="decoration-circle circle-2"></div>
+          <div class="magic-sparkles">
+            <div class="sparkle sparkle-1">✨</div>
+            <div class="sparkle sparkle-2">✨</div>
+            <div class="sparkle sparkle-3">✨</div>
+            <div class="sparkle sparkle-4">✨</div>
+            <div class="sparkle sparkle-5">✨</div>
+          </div>
+        </div>
+
+        <!-- 关闭按钮 -->
+        <div class="preview-close-btn" @click="closePreview">
+          <el-icon>
+            <Close />
+          </el-icon>
+        </div>
+
+        <!-- 标题区域 -->
+        <div class="preview-header">
+          <h3 class="preview-title">
+            <span class="title-icon">🖼️</span>
+            <span class="title-text">图片预览</span>
+          </h3>
+        </div>
+
+        <!-- 图片内容区域 -->
+        <div class="preview-content">
+          <div class="image-wrapper" v-if="selectedImage">
+            <div class="image-glow"></div>
+            <img :src="selectedImage" alt="预览" class="preview-main-image" />
+            <div class="image-border-decoration">
+              <div class="corner corner-tl"></div>
+              <div class="corner corner-tr"></div>
+              <div class="corner corner-bl"></div>
+              <div class="corner corner-br"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部操作区域 -->
+        <div class="preview-actions">
+          <button class="action-btn download-btn" @click="downloadCurrentImage">
+            <el-icon><Download /></el-icon>
+            <span>下载图片</span>
+          </button>
+          <button class="action-btn share-btn" @click="shareCurrentImage">
+            <el-icon><Share /></el-icon>
+            <span>分享图片</span>
+          </button>
+        </div>
       </div>
-    </el-dialog>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ZoomIn, Picture } from '@element-plus/icons-vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { ZoomIn, Picture, Close, Download, Share } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 // 画廊图片数据
 const galleryImages = ref([])
@@ -213,8 +265,74 @@ const downloadImageSet = (images, setId) => {
   })
 }
 
+// 关闭预览
+const closePreview = () => {
+  selectedImage.value = null
+  isPreviewVisible.value = false
+}
+
+// ESC键关闭功能
+const handleKeydown = (event) => {
+  if (event.key === 'Escape' && isPreviewVisible.value) {
+    closePreview()
+  }
+}
+
+// 下载当前图片
+const downloadCurrentImage = () => {
+  if (selectedImage.value) {
+    const link = document.createElement('a')
+    link.href = selectedImage.value
+    link.download = `画廊图片_${Date.now()}.jpg`
+    link.click()
+    
+    // 提示用户
+    ElMessage.success('图片下载开始！')
+  }
+}
+
+// 分享当前图片
+const shareCurrentImage = () => {
+  if (selectedImage.value) {
+    // 检查是否支持 Web Share API
+    if (navigator.share) {
+      navigator.share({
+        title: '精彩的故事图片',
+        text: '快来看看这张精彩的故事图片！',
+        url: selectedImage.value
+      }).catch((error) => {
+        console.log('分享失败:', error)
+        fallbackShare()
+      })
+    } else {
+      fallbackShare()
+    }
+  }
+}
+
+// 备用分享方案
+const fallbackShare = () => {
+  // 复制链接到剪贴板
+  if (navigator.clipboard && selectedImage.value) {
+    navigator.clipboard.writeText(selectedImage.value).then(() => {
+      ElMessage.success('图片链接已复制到剪贴板！')
+    }).catch(() => {
+      ElMessage.info('分享功能即将上线！')
+    })
+  } else {
+    ElMessage.info('分享功能即将上线！')
+  }
+}
+
 onMounted(() => {
   loadGalleryData()
+  // 添加键盘事件监听
+  document.addEventListener('keydown', handleKeydown)
+})
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -533,19 +651,651 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
-.image-preview-container {
+/* ========== 自定义精致图片预览弹出框样式 ========== */
+
+.custom-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
+  z-index: 1000;
+  animation: overlayFadeIn 0.3s ease-out;
+  cursor: pointer;
 }
 
-.preview-image {
-  max-width: 100%;
-  max-height: 500px;
-  border-radius: 15px;
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.custom-preview-container {
+  background: linear-gradient(135deg, #fff8dc, #fffacd);
+  border: 6px solid #f7a985;
+  border-radius: 30px;
+  padding: 35px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+  box-shadow: 
+    0px 20px 40px rgba(255, 99, 71, 0.4),
+    0px 10px 20px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+  animation: containerSlideIn 0.4s cubic-bezier(.4, 2, .6, 1);
+  cursor: default;
+  /* 统一使用本地可爱字体：64_fonts.ttf */
+  font-family: 'CuteFont64', 'Comic Sans MS', 'Microsoft YaHei', '微软雅黑', cursive, sans-serif;
+}
+
+@keyframes containerSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 装饰背景元素 */
+.preview-decorations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.decoration-star {
+  position: absolute;
+  font-size: 1.5rem;
+  color: rgba(255, 215, 0, 0.7);
+  animation: starTwinkle 3s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.star-1 {
+  top: 15%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.star-2 {
+  top: 20%;
+  right: 15%;
+  animation-delay: -1s;
+}
+
+.star-3 {
+  bottom: 25%;
+  left: 15%;
+  animation-delay: -2s;
+}
+
+.star-4 {
+  bottom: 15%;
+  right: 10%;
+  animation-delay: -0.5s;
+}
+
+.decoration-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(45deg, rgba(255, 215, 0, 0.3), rgba(255, 140, 66, 0.2));
+  animation: decorationFloat 6s ease-in-out infinite;
+}
+
+.circle-1 {
+  width: 40px;
+  height: 40px;
+  top: 10%;
+  left: 5%;
+  animation-delay: 0s;
+}
+
+.circle-2 {
+  width: 30px;
+  height: 30px;
+  bottom: 20%;
+  right: 8%;
+  animation-delay: -3s;
+}
+
+/* 闪烁星光效果 */
+.magic-sparkles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  font-size: 0.8rem;
+  color: rgba(255, 215, 0, 0.6);
+  animation: sparkleAnimation 4s ease-in-out infinite;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+}
+
+.sparkle-1 {
+  top: 12%;
+  left: 25%;
+  animation-delay: 0s;
+}
+
+.sparkle-2 {
+  top: 35%;
+  right: 20%;
+  animation-delay: -1s;
+}
+
+.sparkle-3 {
+  bottom: 30%;
+  left: 30%;
+  animation-delay: -2s;
+}
+
+.sparkle-4 {
+  bottom: 12%;
+  right: 35%;
+  animation-delay: -3s;
+}
+
+.sparkle-5 {
+  top: 50%;
+  left: 8%;
+  animation-delay: -1.5s;
+}
+
+/* 动画关键帧 */
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+}
+
+@keyframes decorationFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(180deg);
+  }
+}
+
+@keyframes sparkleAnimation {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(0deg);
+  }
+  25% {
+    opacity: 0.8;
+    transform: scale(1.2) rotate(90deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+  75% {
+    opacity: 0.8;
+    transform: scale(1.3) rotate(270deg);
+  }
+}
+
+/* 关闭按钮 */
+.preview-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 45px;
+  height: 45px;
+  background: linear-gradient(135deg, #ff6347, #ff8c42);
   border: 4px solid #f7a985;
-  box-shadow: 0px 8px #ff6347;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 800;
+  box-shadow: 
+    0px 6px 12px rgba(255, 99, 71, 0.4),
+    0px 3px 6px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  z-index: 10;
+}
+
+.preview-close-btn:hover {
+  background: linear-gradient(135deg, #ff4500, #ff6347);
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.5),
+    0px 4px 8px rgba(255, 140, 66, 0.4),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.4);
+}
+
+.preview-close-btn:active {
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 
+    0px 4px 8px rgba(255, 99, 71, 0.3),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2);
+}
+
+/* 标题区域 */
+.preview-header {
+  text-align: center;
+  margin-bottom: 25px;
+  position: relative;
+  z-index: 2;
+}
+
+.preview-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #8b4513;
+  text-shadow: 
+    2px 2px 0px #ffd700,
+    4px 4px 0px #fff8dc,
+    0 0 15px rgba(255, 215, 0, 0.6);
+  letter-spacing: 1px;
+  margin: 0;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+.title-icon {
+  font-size: 1.8rem;
+  filter: drop-shadow(0 0 10px rgba(255, 140, 66, 0.6));
+  animation: iconBounce 3s ease-in-out infinite;
+}
+
+.title-text {
+  animation: textFloat 3s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow: 
+      2px 2px 0px #ffd700,
+      4px 4px 0px #fff8dc,
+      0 0 15px rgba(255, 215, 0, 0.6);
+  }
+  50% {
+    text-shadow: 
+      2px 2px 0px #ffd700,
+      4px 4px 0px #fff8dc,
+      0 0 25px rgba(255, 215, 0, 1);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(10deg);
+  }
+}
+
+@keyframes textFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* 图片内容区域 */
+.preview-content {
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 25px;
+}
+
+.image-wrapper {
+  position: relative;
+  display: inline-block;
+  animation: imageAppear 0.5s ease-out 0.2s both;
+}
+
+@keyframes imageAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.image-glow {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: radial-gradient(ellipse, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  border-radius: 25px;
+  animation: glowPulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.preview-main-image {
+  max-width: 100%;
+  max-height: 70vh;
+  min-height: 200px;
+  border-radius: 20px;
+  border: 6px solid #f7a985;
+  box-shadow: 
+    0px 15px 30px rgba(255, 99, 71, 0.4),
+    0px 8px 15px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  object-fit: contain;
+  background: #fff;
+}
+
+.preview-main-image:hover {
+  transform: scale(1.02);
+  box-shadow: 
+    0px 20px 40px rgba(255, 99, 71, 0.5),
+    0px 10px 20px rgba(255, 140, 66, 0.4),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.4);
+}
+
+/* 图片装饰边框 */
+.image-border-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.corner {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  background: rgba(255, 215, 0, 0.8);
+  border-radius: 50%;
+  animation: cornerSpin 6s linear infinite;
+  box-shadow: 
+    0 0 10px rgba(255, 215, 0, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+.corner-tl {
+  top: -12px;
+  left: -12px;
+  animation-delay: 0s;
+}
+
+.corner-tr {
+  top: -12px;
+  right: -12px;
+  animation-delay: -1.5s;
+}
+
+.corner-bl {
+  bottom: -12px;
+  left: -12px;
+  animation-delay: -3s;
+}
+
+.corner-br {
+  bottom: -12px;
+  right: -12px;
+  animation-delay: -4.5s;
+}
+
+@keyframes cornerSpin {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.7;
+  }
+}
+
+/* 底部操作区域 */
+.preview-actions {
+  text-align: center;
+  margin-top: 25px;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: linear-gradient(135deg, #ffb347, #ffd700);
+  border: 4px solid #f7a985;
+  border-radius: 25px;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #8b4513;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  box-shadow: 
+    0px 6px 12px rgba(255, 179, 71, 0.4),
+    0px 3px 6px rgba(255, 215, 0, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.action-btn:hover {
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0px 8px 16px rgba(255, 179, 71, 0.5),
+    0px 4px 8px rgba(255, 215, 0, 0.4),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.7);
+}
+
+.action-btn:active {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 
+    0px 4px 8px rgba(255, 179, 71, 0.3),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.4);
+}
+
+.download-btn .el-icon {
+  font-size: 1.2rem;
+  color: #8b4513;
+  filter: drop-shadow(1px 1px 2px rgba(139, 69, 19, 0.3));
+}
+
+.share-btn {
+  background: linear-gradient(135deg, #ff8c42, #ff6347);
+  color: #fff;
+  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
+}
+
+.share-btn:hover {
+  background: linear-gradient(135deg, #ff6347, #ff8c42);
+}
+
+.share-btn .el-icon {
+  font-size: 1.2rem;
+  color: #fff;
+  filter: drop-shadow(1px 1px 2px rgba(139, 69, 19, 0.5));
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .custom-preview-container {
+    padding: 20px;
+    margin: 10px;
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .preview-title {
+    font-size: 1.6rem;
+    gap: 8px;
+  }
+
+  .title-icon {
+    font-size: 1.4rem;
+  }
+
+  .preview-main-image {
+    max-height: 60vh;
+    min-height: 150px;
+  }
+
+  .preview-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .action-btn {
+    font-size: 1rem;
+    padding: 10px 20px;
+    min-width: 120px;
+  }
+
+  .preview-close-btn {
+    width: 40px;
+    height: 40px;
+    top: 10px;
+    right: 10px;
+    font-size: 1rem;
+  }
+
+  /* 移动端装饰元素优化 */
+  .decoration-star {
+    font-size: 1.2rem;
+  }
+
+  .decoration-circle {
+    opacity: 0.7;
+  }
+
+  .circle-1 {
+    width: 30px;
+    height: 30px;
+  }
+
+  .circle-2 {
+    width: 25px;
+    height: 25px;
+  }
+
+  .sparkle {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .custom-preview-container {
+    padding: 15px;
+    border-width: 4px;
+  }
+
+  .preview-title {
+    font-size: 1.4rem;
+  }
+
+  .title-icon {
+    font-size: 1.2rem;
+  }
+
+  .preview-main-image {
+    max-height: 50vh;
+    border-width: 4px;
+  }
+
+  .action-btn {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border-width: 3px;
+  }
+
+  .preview-close-btn {
+    width: 35px;
+    height: 35px;
+    border-width: 3px;
+  }
 }
 
 @media (max-width: 1600px) {
