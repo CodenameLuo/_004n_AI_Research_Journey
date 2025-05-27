@@ -148,7 +148,7 @@
             <label>姓名</label>
             <input v-model="userInfo.name" placeholder="请输入你的姓名" class="cartoon-input" />
           </div>
-          <div class="form-item">
+          <div class="form-item-row">
             <label>性别</label>
             <el-radio-group v-model="userInfo.gender" size="large">
               <el-radio-button value="male">👦 男孩</el-radio-button>
@@ -167,10 +167,33 @@
           <div class="form-item">
             <label>图片描述</label>
             <div class="desc-list">
-              <div v-for="(desc, idx) in userInfo.descriptions" :key="idx" class="description-wrapper">
-                <div class="description-number">{{ idx + 1 }}</div>
-                <textarea v-model="userInfo.descriptions[idx]" :placeholder="`第${idx + 1}张图片描述`" class="cartoon-textarea" rows="2"></textarea>
+                          <div v-for="(desc, idx) in userInfo.descriptions" :key="idx" class="description-wrapper">
+              <div class="description-number">
+                <div class="number-text">{{ idx + 1 }}</div>
+                <div 
+                  class="voice-input-btn" 
+                  :class="{ 'recording': recordingIndex === idx }"
+                  @mousedown="startRecording(idx)"
+                  @mouseup="stopRecording"
+                  @mouseleave="stopRecording"
+                  @touchstart.passive="startRecording(idx)"
+                  @touchend.passive="stopRecording"
+                  @touchcancel.passive="stopRecording"
+                  :title="recordingIndex === idx ? '录音中...' : '按住说话'"
+                >
+                  <el-icon v-if="recordingIndex !== idx">
+                    <Microphone />
+                  </el-icon>
+                  <div v-else class="recording-indicator">
+                    <div class="pulse-ring"></div>
+                    <el-icon>
+                      <Microphone />
+                    </el-icon>
+                  </div>
+                </div>
               </div>
+              <textarea v-model="userInfo.descriptions[idx]" :placeholder="`第${idx + 1}张图片描述`" class="cartoon-textarea" rows="2"></textarea>
+            </div>
             </div>
           </div>
           <el-button type="primary" size="large" @click="generateImages" :loading="isGenerating" class="generate-btn">
@@ -238,10 +261,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import Gallery from '../components/Gallery.vue'
-import { Plus, Delete, Picture, MagicStick, Download, Share } from '@element-plus/icons-vue'
+import { Plus, Delete, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
 
 // 响应式数据
 const userInfo = reactive({
@@ -266,6 +289,12 @@ const generatedImages = ref(Array(9).fill(null))
 
 // 生成状态
 const isGenerating = ref(false)
+
+// 语音识别相关状态
+const recordingIndex = ref(-1)
+const recognition = ref(null)
+const isRecognitionSupported = ref(false)
+const isRecognitionActive = ref(false)
 
 // 风格选项
 const styleOptions = [
@@ -378,6 +407,135 @@ const shareAllImages = () => {
   ElMessage.info('批量分享功能即将上线！')
 }
 
+// 语音识别功能初始化
+const initSpeechRecognition = () => {
+  try {
+    // 检查浏览器支持
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      isRecognitionSupported.value = false
+      console.warn('当前浏览器不支持语音识别功能')
+      return
+    }
+
+    isRecognitionSupported.value = true
+    recognition.value = new SpeechRecognition()
+    
+    // 配置语音识别
+    recognition.value.continuous = false
+    recognition.value.interimResults = true
+    recognition.value.lang = 'zh-CN'
+    recognition.value.maxAlternatives = 1
+
+    // 识别结果处理
+    recognition.value.onresult = (event) => {
+      let transcript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript
+      }
+      
+      // 更新对应输入框的内容
+      if (recordingIndex.value >= 0) {
+        userInfo.descriptions[recordingIndex.value] = transcript
+      }
+    }
+
+    // 识别结束处理
+    recognition.value.onend = () => {
+      recordingIndex.value = -1
+      isRecognitionActive.value = false
+    }
+
+    // 错误处理
+    recognition.value.onerror = (event) => {
+      console.error('语音识别错误:', event.error)
+      recordingIndex.value = -1
+      isRecognitionActive.value = false
+      
+      switch (event.error) {
+        case 'no-speech':
+          ElMessage.warning('没有检测到语音输入')
+          break
+        case 'network':
+          ElMessage.error('网络错误，请检查网络连接')
+          break
+        case 'not-allowed':
+          ElMessage.error('麦克风权限被拒绝，请允许使用麦克风')
+          break
+        default:
+          ElMessage.error('语音识别失败，请重试')
+      }
+    }
+
+    // 开始识别处理
+    recognition.value.onstart = () => {
+      console.log('开始语音识别')
+      isRecognitionActive.value = true
+    }
+
+  } catch (error) {
+    console.error('初始化语音识别失败:', error)
+    isRecognitionSupported.value = false
+  }
+}
+
+// 开始录音
+const startRecording = (index) => {
+  if (!isRecognitionSupported.value) {
+    ElMessage.warning('当前浏览器不支持语音输入功能')
+    return
+  }
+
+  // 防止重复启动
+  if (isRecognitionActive.value || recordingIndex.value === index) {
+    return
+  }
+
+  // 如果正在录制其他的，先停止
+  if (recordingIndex.value >= 0) {
+    stopRecording()
+    // 给一点时间让之前的识别完全停止
+    setTimeout(() => {
+      startRecordingInternal(index)
+    }, 100)
+  } else {
+    startRecordingInternal(index)
+  }
+}
+
+// 内部启动录音方法
+const startRecordingInternal = (index) => {
+  recordingIndex.value = index
+  
+  try {
+    recognition.value.start()
+    ElMessage.info('开始语音输入，松开停止')
+  } catch (error) {
+    console.error('启动语音识别失败:', error)
+    recordingIndex.value = -1
+    isRecognitionActive.value = false
+    ElMessage.error('语音输入启动失败')
+  }
+}
+
+// 停止录音
+const stopRecording = () => {
+  if (recordingIndex.value >= 0 && recognition.value && isRecognitionActive.value) {
+    try {
+      recognition.value.stop()
+    } catch (error) {
+      console.error('停止语音识别失败:', error)
+      // 即使出错也要重置状态
+      recordingIndex.value = -1
+      isRecognitionActive.value = false
+    }
+  } else {
+    // 直接重置状态
+    recordingIndex.value = -1
+    isRecognitionActive.value = false
+  }
+}
+
 // 泡泡破裂效果
 const burstBubble = (event) => {
   const bubble = event.target
@@ -408,6 +566,11 @@ const burstBubble = (event) => {
     bubble.style.animation = ''
   }, 300)
 }
+
+// 组件挂载时初始化语音识别
+onMounted(() => {
+  initSpeechRecognition()
+})
 </script>
 
 <style scoped>
@@ -1403,7 +1566,14 @@ const burstBubble = (event) => {
   gap: 8px;
 }
 
-.form-item label {
+.form-item-row{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-item label, .form-item-row label {
   font-weight: 700;
   color: #8b4513;
   font-size: 1.3rem;
@@ -1876,7 +2046,7 @@ const burstBubble = (event) => {
 }
 
 /* Element Plus 组件字体统一覆盖 */
-.form-item :deep(.el-radio-button__inner) {
+.form-item :deep(.el-radio-button__inner), .form-item-row :deep(.el-radio-button__inner) {
   background: #fff8dc;
   color: #8b4513;
   border: 4px solid #f7a985;
@@ -1888,7 +2058,7 @@ const burstBubble = (event) => {
   letter-spacing: 0.5px;
 }
 
-.form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+.form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner), .form-item-row :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner)   {
   background: #ff8c42;
   color: #fff;
   border-color: #ff6347;
@@ -1896,7 +2066,7 @@ const burstBubble = (event) => {
   font-weight: 800;
 }
 
-.form-item :deep(.el-select .el-input__inner) {
+.form-item :deep(.el-select .el-input__inner), .form-item-row :deep(.el-select .el-input__inner) {
   border: 4px solid #f7a985;
   border-radius: 20px;
   background: #fffacd;
@@ -2018,6 +2188,26 @@ const burstBubble = (event) => {
     border-width: 4px;
     box-shadow: 0px 6px #ff6347;
   }
+
+  .description-number {
+    min-width: 2.5em;
+    padding: 0.6em 0.8em;
+    gap: 0.2em;
+  }
+
+  .number-text {
+    font-size: 0.9rem;
+  }
+
+  .voice-input-btn {
+    width: 1.5em;
+    height: 1.5em;
+    border-width: 1px;
+  }
+
+  .voice-input-btn .el-icon {
+    font-size: 0.9rem;
+  }
 }
 
 /* 标题icon装饰 */
@@ -2047,13 +2237,13 @@ const burstBubble = (event) => {
   filter: brightness(0.95) drop-shadow(0 1px 0 #ffd700);
 }
 
-.form-item :deep(.el-radio-button__inner):hover {
+.form-item :deep(.el-radio-button__inner):hover, .form-item-row :deep(.el-radio-button__inner):hover {
   background: #fffacd !important;
   color: #ff6347 !important;
   border-color: #ffb347 !important;
 }
 
-.form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+.form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner), .form-item-row :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
   background: #ff8c42 !important;
   color: #fff !important;
   border-color: #ff6347 !important;
@@ -2097,18 +2287,52 @@ const burstBubble = (event) => {
   box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1), 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* 优化下拉菜单选项样式 - 更大更协调 */
 .cartoon-select option {
   background: #fff8dc;
   color: #8b4513;
   font-weight: 700;
-  font-size: 1rem;
-  padding: 8px;
+  font-size: 1.2rem;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin: 2px 0;
+  letter-spacing: 0.5px;
+  line-height: 1.8;
+  min-height: 45px;
+  text-shadow: 0.5px 0.5px 0px rgba(255, 215, 0, 0.3);
 }
 
+/* 悬浮状态 - 温暖的卡通色系 */
+.cartoon-select option:hover {
+  background: linear-gradient(135deg, #fffacd 0%, #ffe4b5 100%);
+  color: #ff6347;
+  font-weight: 800;
+  text-shadow: 1px 1px 0px rgba(255, 215, 0, 0.6);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+  border: 2px solid #ffb347;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
+}
+
+/* 选中状态 - 更鲜艳的卡通配色 */
 .cartoon-select option:checked {
-  background: #ffb347;
+  background: linear-gradient(135deg, #ff8c42 0%, #ffb347 100%);
   color: #fff;
   font-weight: 800;
+  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
+  border: 2px solid #f7a985;
+  box-shadow: 
+    0 3px 10px rgba(255, 99, 71, 0.4),
+    inset 0 1px 0px rgba(255, 255, 255, 0.3);
+}
+
+/* 选中且悬浮状态 */
+.cartoon-select option:checked:hover {
+  background: linear-gradient(135deg, #ffb347 0%, #ffd700 100%);
+  transform: scale(1.03);
+  box-shadow: 
+    0 4px 12px rgba(255, 99, 71, 0.5),
+    inset 0 1px 0px rgba(255, 255, 255, 0.4);
 }
 
 /* 原生文本域卡通立体样式 */
@@ -2128,11 +2352,93 @@ const burstBubble = (event) => {
   font-size: 1rem;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-width: 3em;
   border-right: none;
   height: auto;
+  gap: 0.3em;
+}
+
+.number-text {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.voice-input-btn {
+  width: 1.8em;
+  height: 1.8em;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #ff8c42;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  user-select: none;
+  position: relative;
+}
+
+.voice-input-btn:hover {
+  background: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.voice-input-btn:active {
+  transform: scale(0.95);
+}
+
+.voice-input-btn.recording {
+  background: #ff6347;
+  color: #fff;
+  animation: voiceButtonPulse 1s ease-in-out infinite;
+}
+
+.recording-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200%;
+  height: 200%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: pulsering 1.5s ease-out infinite;
+}
+
+/* 语音按钮动画 */
+@keyframes voiceButtonPulse {
+  0%, 100% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(255, 99, 71, 0.7);
+  }
+  50% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 8px rgba(255, 99, 71, 0);
+  }
+}
+
+@keyframes pulsering {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
 }
 
 .cartoon-textarea {
