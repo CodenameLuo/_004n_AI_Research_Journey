@@ -89,13 +89,13 @@
         <!-- 自拍照上传 -->
         <div class="selfie-upload">
           <h3>1. 上传你的自拍照</h3>
-          <el-upload class="selfie-uploader" :show-file-list="false" :before-upload="handleSelfieUpload" accept=".jpg,.jpeg" drag>
+          <el-upload class="selfie-uploader" :show-file-list="false" :before-upload="handleSelfieUpload" accept=".jpg,.jpeg,.png" drag>
             <div v-if="!selfiePreview" class="upload-placeholder">
               <el-icon class="upload-icon">
                 <Plus />
               </el-icon>
               <div class="upload-text">拖拽或点击上传自拍照</div>
-              <div class="upload-hint">仅支持JPG格式</div>
+              <div class="upload-hint">支持JPG、PNG格式，小于10MB</div>
             </div>
             <div v-else class="image-preview">
               <img :src="selfiePreview" alt="自拍照" />
@@ -115,7 +115,7 @@
           <div class="upload-grid">
             <div v-for="(item, index) in descriptionImages" :key="index" class="upload-item">
               <div class="upload-number">{{ index + 1 }}</div>
-              <el-upload class="description-uploader" :show-file-list="false" :before-upload="(file) => handleDescriptionUpload(file, index)" accept=".jpg,.jpeg" drag>
+              <el-upload class="description-uploader" :show-file-list="false" :before-upload="(file) => handleDescriptionUpload(file, index)" accept=".jpg,.jpeg,.png" drag>
                 <div v-if="!item.preview" class="upload-placeholder small">
                   <el-icon>
                     <Plus />
@@ -217,12 +217,36 @@
             </div>
             </div>
           </div>
-          <el-button type="primary" size="large" @click="generateImages" :loading="isGenerating" class="generate-btn">
+          <el-button 
+            type="primary" 
+            size="large" 
+            @click="generateImages" 
+            :loading="isGenerating" 
+            :disabled="!selfieImage || descriptionImages.filter(item => item.image).length !== 8 || userInfo.descriptions.filter(desc => desc.trim()).length !== 8"
+            class="generate-btn"
+          >
             <el-icon>
               <MagicStick />
             </el-icon>
-            {{ isGenerating ? '正在生成...' : '生成故事图片' }}
+            {{ isGenerating ? '正在生成中...' : '🎨 生成故事图片' }}
           </el-button>
+          <div v-if="!selfieImage || descriptionImages.filter(item => item.image).length !== 8 || userInfo.descriptions.filter(desc => desc.trim()).length !== 8" class="generate-hint">
+            <p>✨ 完成以下步骤后即可生成：</p>
+            <ul>
+              <li :class="{ completed: selfieImage }">
+                <span class="check-icon">{{ selfieImage ? '✅' : '📷' }}</span>
+                上传自拍照
+              </li>
+              <li :class="{ completed: descriptionImages.filter(item => item.image).length === 8 }">
+                <span class="check-icon">{{ descriptionImages.filter(item => item.image).length === 8 ? '✅' : '🖼️' }}</span>
+                上传8张参考图片 ({{ descriptionImages.filter(item => item.image).length }}/8)
+              </li>
+              <li :class="{ completed: userInfo.descriptions.filter(desc => desc.trim()).length === 8 }">
+                <span class="check-icon">{{ userInfo.descriptions.filter(desc => desc.trim()).length === 8 ? '✅' : '✍️' }}</span>
+                填写所有图片描述 ({{ userInfo.descriptions.filter(desc => desc.trim()).length }}/8)
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -320,44 +344,59 @@ const isRecognitionActive = ref(false)
 // 自定义下拉菜单状态
 const isStyleSelectOpen = ref(false)
 
-// 风格选项
+// 风格选项 - 对应后端支持的风格
 const styleOptions = [
-  { label: '卡通风格', value: 'cartoon' },
-  { label: '动漫风格', value: 'anime' },
-  { label: '写实风格', value: 'realistic' },
-  { label: '奇幻风格', value: 'fantasy' },
-  { label: '水彩风格', value: 'watercolor' },
-  { label: '油画风格', value: 'oil_painting' }
+  { label: '写实风', value: '写实风' },
+  { label: '日本漫画风', value: '日本漫画风' },
+  { label: '数字油画风', value: '数字油画风' },
+  { label: '迪士尼皮克斯风', value: '迪士尼皮克斯风' },
+  { label: '摄影写真风格', value: '摄影写真风格' },
+  { label: '漫画书风格', value: '漫画书风格' },
+  { label: '艺术线条风', value: '艺术线条风' },
+  { label: '黑白电影风', value: '黑白电影风' },
+  { label: '3D建模风', value: '3D建模风' }
 ]
+
+// 后端API基础URL
+const API_BASE_URL = 'http://localhost:5000'
+
+// 当前会话ID
+const sessionId = ref('')
 
 // 文件上传处理
 const handleSelfieUpload = (file) => {
   if (!validateImage(file)) return false
-  selfieImage.value = file.raw
+  selfieImage.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
     selfiePreview.value = e.target.result
   }
-  reader.readAsDataURL(file.raw)
+  reader.readAsDataURL(file)
   return false // 阻止自动上传
 }
 
 const handleDescriptionUpload = (file, index) => {
   if (!validateImage(file)) return false
-  descriptionImages.value[index].image = file.raw
+  descriptionImages.value[index].image = file
   const reader = new FileReader()
   reader.onload = (e) => {
     descriptionImages.value[index].preview = e.target.result
   }
-  reader.readAsDataURL(file.raw)
+  reader.readAsDataURL(file)
   return false
 }
 
 // 图片验证
 const validateImage = (file) => {
-  const isJPG = file.raw.type === 'image/jpeg'
-  if (!isJPG) {
-    ElMessage.error('请上传JPG格式的图片！')
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/jpg'
+  const isPNG = file.type === 'image/png'
+  if (!isJPG && !isPNG) {
+    ElMessage.error('请上传JPG或PNG格式的图片！')
+    return false
+  }
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('图片大小不能超过10MB！')
     return false
   }
   return true
@@ -376,8 +415,39 @@ const removeDescriptionImage = (index) => {
   }
 }
 
+// 上传图片到后端
+const uploadImages = async () => {
+  const formData = new FormData()
+  
+  // 添加自拍照
+  formData.append('portrait', selfieImage.value)
+  
+  // 添加8张参考图片
+  const referenceImages = descriptionImages.value.filter(item => item.image !== null)
+  if (referenceImages.length !== 8) {
+    throw new Error('请上传所有8张参考图片！')
+  }
+  
+  referenceImages.forEach((item, index) => {
+    formData.append('reference_images', item.image)
+  })
+  
+  const response = await fetch(`${API_BASE_URL}/upload`, {
+    method: 'POST',
+    body: formData
+  })
+  
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || '上传失败')
+  }
+  
+  return await response.json()
+}
+
 // 生成图片
 const generateImages = async () => {
+  // 验证输入
   if (!selfieImage.value) {
     ElMessage.warning('请先上传自拍照！')
     return
@@ -394,15 +464,65 @@ const generateImages = async () => {
     ElMessage.warning('请选择图片风格！')
     return
   }
+  
+  // 检查是否所有描述都已填写
+  const emptyDescriptions = userInfo.descriptions.filter(desc => !desc.trim())
+  if (emptyDescriptions.length > 0) {
+    ElMessage.warning('请填写所有图片描述！')
+    return
+  }
+  
+  // 检查是否上传了所有图片
+  const uploadedImages = descriptionImages.value.filter(item => item.image !== null)
+  if (uploadedImages.length !== 8) {
+    ElMessage.warning('请上传所有8张参考图片！')
+    return
+  }
+  
   isGenerating.value = true
+  
   try {
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    generatedImages.value = Array(9).fill(null).map((_, index) =>
-      `https://picsum.photos/200/200?random=${Date.now() + index}`
+    ElMessage.info('正在上传图片...')
+    
+    // 1. 上传图片
+    const uploadResult = await uploadImages()
+    sessionId.value = uploadResult.session_id
+    
+    ElMessage.info('图片上传成功，开始生成...')
+    
+    // 2. 调用生成接口
+    const generateResponse = await fetch(`${API_BASE_URL}/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        session_id: sessionId.value,
+        prompts: userInfo.descriptions,
+        style: userInfo.style,
+        gender: userInfo.gender === 'male' ? '男' : '女'
+      })
+    })
+    
+    if (!generateResponse.ok) {
+      const error = await generateResponse.json()
+      throw new Error(error.error || '生成失败')
+    }
+    
+    const generateResult = await generateResponse.json()
+    
+    // 3. 处理生成结果 - 使用base64图片
+    generatedImages.value = generateResult.images.map(img => 
+      `data:image/png;base64,${img.base64}`
     )
+    
     ElMessage.success('图片生成成功！')
+    
   } catch (error) {
-    ElMessage.error('生成失败，请重试！')
+    console.error('生成错误:', error)
+    ElMessage.error(error.message || '生成失败，请重试！')
+    // 重置生成状态
+    generatedImages.value = Array(9).fill(null)
   } finally {
     isGenerating.value = false
   }
@@ -410,25 +530,104 @@ const generateImages = async () => {
 
 // 下载功能
 const downloadImage = (url, index) => {
+  // 如果是base64图片，直接下载
+  if (url.startsWith('data:image')) {
   const link = document.createElement('a')
   link.href = url
-  link.download = `故事_${index + 1}.jpg`
+    link.download = `${userInfo.name || '故事'}_${index === 0 ? '封面' : index}.png`
   link.click()
+  } else {
+    // 如果是URL，获取后下载
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `${userInfo.name || '故事'}_${index === 0 ? '封面' : index}.png`
+        link.click()
+        URL.revokeObjectURL(link.href)
+      })
+      .catch(error => {
+        console.error('下载失败:', error)
+        ElMessage.error('下载失败！')
+      })
+  }
 }
 
 const downloadAllImages = () => {
+  const validImages = generatedImages.value.filter(url => url)
+  if (validImages.length === 0) {
+    ElMessage.warning('没有可下载的图片！')
+    return
+  }
+  
+  ElMessage.info(`开始下载${validImages.length}张图片...`)
   generatedImages.value.forEach((url, index) => {
-    if (url) downloadImage(url, index)
+    if (url) {
+      // 延迟下载，避免浏览器阻止多文件下载
+      setTimeout(() => downloadImage(url, index), index * 100)
+    }
   })
 }
 
-// 分享功能（占位）
-const shareImage = (url) => {
-  ElMessage.info('分享功能即将上线！')
+// 分享功能
+const shareImage = async (url) => {
+  try {
+    if (navigator.share && url.startsWith('data:image')) {
+      // 将base64转换为Blob用于分享
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const file = new File([blob], `${userInfo.name || '故事'}图片.png`, { type: 'image/png' })
+      
+      await navigator.share({
+        title: `${userInfo.name}的AI故事`,
+        text: '看看我用AI创作的故事图片！',
+        files: [file]
+      })
+    } else {
+      // 降级处理：复制链接到剪贴板
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        ElMessage.success('图片链接已复制到剪贴板！')
+      } else {
+        ElMessage.info('请手动复制图片进行分享')
+}
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+    // 再次降级：提供下载选项
+    ElMessage.info('分享失败，建议下载图片后手动分享')
+  }
 }
 
-const shareAllImages = () => {
-  ElMessage.info('批量分享功能即将上线！')
+const shareAllImages = async () => {
+  const validImages = generatedImages.value.filter(url => url)
+  if (validImages.length === 0) {
+    ElMessage.warning('没有可分享的图片！')
+    return
+  }
+  
+  try {
+    if (navigator.share) {
+      // 分享故事集合信息
+      await navigator.share({
+        title: `${userInfo.name}的AI故事集`,
+        text: `我用AI创作了一个包含${validImages.length}张图片的故事！`,
+        url: window.location.href
+      })
+    } else {
+      // 降级处理：复制页面链接
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href)
+        ElMessage.success('页面链接已复制到剪贴板！')
+      } else {
+        ElMessage.info('请手动分享您的故事')
+      }
+    }
+  } catch (error) {
+    console.error('批量分享失败:', error)
+    ElMessage.info('建议逐个下载图片进行分享')
+  }
 }
 
 // 自定义下拉菜单方法
@@ -609,10 +808,33 @@ const handleClickOutside = (event) => {
   }
 }
 
-// 组件挂载时初始化语音识别
-onMounted(() => {
+// 检查后端服务状态
+const checkBackendHealth = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`)
+    if (response.ok) {
+      const data = await response.json()
+      console.log('后端服务连接成功:', data)
+      return true
+    } else {
+      throw new Error('后端服务响应异常')
+    }
+  } catch (error) {
+    console.error('后端服务连接失败:', error)
+    ElMessage.warning('后端服务未启动，请先启动Flask后端服务！')
+    return false
+  }
+}
+
+// 组件挂载时初始化语音识别和检查后端
+onMounted(async () => {
   initSpeechRecognition()
   document.addEventListener('click', handleClickOutside)
+  
+  // 延迟检查后端服务，给用户时间看到界面
+  setTimeout(() => {
+    checkBackendHealth()
+  }, 1000)
 })
 
 // 组件卸载时清理事件监听
@@ -2800,6 +3022,64 @@ onUnmounted(() => {
 .cartoon-textarea {
   scrollbar-width: thin;
   scrollbar-color: #ff8c42 rgba(255, 215, 0, 0.2);
+}
+
+/* 生成提示样式 */
+.generate-hint {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 3px solid #ffd700;
+  border-radius: 15px;
+  font-size: 0.95rem;
+}
+
+.generate-hint p {
+  margin: 0 0 10px 0;
+  font-weight: 700;
+  color: #8b4513;
+  text-align: center;
+}
+
+.generate-hint ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.generate-hint li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  color: #8b4513;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.generate-hint li.completed {
+  color: #2e8b57;
+  font-weight: 700;
+}
+
+.generate-hint .check-icon {
+  font-size: 1.1rem;
+  min-width: 1.5em;
+  text-align: center;
+}
+
+/* 禁用状态的生成按钮 */
+.generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f5f5dc !important;
+  border-color: #ddd !important;
+  color: #999 !important;
+}
+
+.generate-btn:disabled:hover {
+  transform: none !important;
+  box-shadow: 0px 8px #f32b11 !important;
 }
 
 /* Element Plus 全局字体覆盖 */
