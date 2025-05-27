@@ -15,3 +15,67 @@ a,
   transition: 0.4s;
 }
 
+/* 全局滚动条样式 - 卡通风格 */
+::-webkit-scrollbar {
+  width: 16px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 215, 0, 0.15);
+  border-radius: 12px;
+  margin: 6px;
+  border: 3px solid rgba(247, 169, 133, 0.4);
+  box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff8c42, #ffb347, #ffd700);
+  border-radius: 12px;
+  border: 3px solid #f7a985;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.3),
+    inset 0px -2px 0px rgba(139, 69, 19, 0.2);
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  position: relative;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ffb347, #ffd700, #fff8dc);
+  border-color: #ff8c42;
+  box-shadow: 
+    0px 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.4),
+    inset 0px -2px 0px rgba(139, 69, 19, 0.3),
+    0px 0px 12px rgba(255, 215, 0, 0.6);
+  transform: scale(1.08);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #ff6347, #ff8c42, #ffb347);
+  box-shadow: 
+    0px 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2),
+    inset 0px -1px 0px rgba(139, 69, 19, 0.4);
+  transform: scale(0.96);
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 8px;
+  border: 2px solid rgba(247, 169, 133, 0.3);
+}
+
+/* Firefox 全局滚动条样式 */
+html {
+  scrollbar-width: auto;
+  scrollbar-color: #ff8c42 rgba(255, 215, 0, 0.15);
+}
+
+/* 针对整个页面的滚动条优化 */
+body {
+  scrollbar-width: auto;
+  scrollbar-color: #ff8c42 rgba(255, 215, 0, 0.15);
+}
+

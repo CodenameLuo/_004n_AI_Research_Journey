@@ -1,3 +1,85 @@
+<template>
+  <div class="gallery">
+    <div class="gallery-header">
+      <h2>🎭 画廊</h2>
+      <p>欣赏小朋友们创作的精彩故事图片！</p>
+      <!-- 搜索框 -->
+      <div class="search-box">
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="搜索姓名或风格..." 
+          class="search-input"
+          @input="filterGallery"
+        />
+        <div class="search-icon">🔍</div>
+      </div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-container">
+      <el-skeleton :rows="3" animated />
+    </div>
+
+    <!-- 画廊内容 -->
+    <div v-else class="gallery-waterfall">
+      <div 
+        v-for="(set, index) in filteredGallery" 
+        :key="set.id"
+        class="gallery-set"
+      >
+        <div class="set-info">
+          <div class="set-meta">
+            <h3>{{ set.userName }}的故事</h3>
+            <span class="set-date">{{ set.createdAt }}</span>
+          </div>
+          <div class="set-style">{{ set.style }}</div>
+        </div>
+        <!-- 9宫格图片 -->
+        <div class="images-grid-9">
+          <div 
+            v-for="(image, index) in set.images" 
+            :key="index"
+            class="image-item"
+            @click="previewImage(image)"
+          >
+            <img :src="image" :alt="`图片${index + 1}`" />
+            <div class="image-overlay">
+              <el-icon class="preview-icon"><ZoomIn /></el-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 空状态 -->
+    <div v-if="!isLoading && filteredGallery.length === 0 && searchQuery" class="empty-state">
+      <el-icon class="empty-icon"><Picture /></el-icon>
+      <h3>没有找到相关内容</h3>
+      <p>试试搜索其他关键词吧！</p>
+    </div>
+    
+    <!-- 无数据状态 -->
+    <div v-if="!isLoading && galleryImages.length === 0" class="empty-state">
+      <el-icon class="empty-icon"><Picture /></el-icon>
+      <h3>暂无故事</h3>
+      <p>快来上面创作你的第一个故事吧！</p>
+    </div>
+
+    <!-- 图片预览对话框 -->
+    <el-dialog
+      v-model="isPreviewVisible"
+      title="图片预览"
+      width="50%"
+      center
+    >
+      <div class="image-preview-container" v-if="selectedImage">
+        <img :src="selectedImage" alt="预览" class="preview-image" />
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ZoomIn, Picture } from '@element-plus/icons-vue'
@@ -135,88 +217,6 @@ onMounted(() => {
   loadGalleryData()
 })
 </script>
-
-<template>
-  <div class="gallery">
-    <div class="gallery-header">
-      <h2>🎭 画廊</h2>
-      <p>欣赏小朋友们创作的精彩故事图片！</p>
-      <!-- 搜索框 -->
-      <div class="search-box">
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="搜索用户名或风格..." 
-          class="search-input"
-          @input="filterGallery"
-        />
-        <div class="search-icon">🔍</div>
-      </div>
-    </div>
-
-    <!-- 加载状态 -->
-    <div v-if="isLoading" class="loading-container">
-      <el-skeleton :rows="3" animated />
-    </div>
-
-    <!-- 画廊内容 -->
-    <div v-else class="gallery-waterfall">
-      <div 
-        v-for="(set, index) in filteredGallery" 
-        :key="set.id"
-        class="gallery-set"
-      >
-        <div class="set-info">
-          <div class="set-meta">
-            <h3>{{ set.userName }}的故事</h3>
-            <span class="set-date">{{ set.createdAt }}</span>
-          </div>
-          <div class="set-style">{{ set.style }}</div>
-        </div>
-        <!-- 9宫格图片 -->
-        <div class="images-grid-9">
-          <div 
-            v-for="(image, index) in set.images" 
-            :key="index"
-            class="image-item"
-            @click="previewImage(image)"
-          >
-            <img :src="image" :alt="`图片${index + 1}`" />
-            <div class="image-overlay">
-              <el-icon class="preview-icon"><ZoomIn /></el-icon>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 空状态 -->
-    <div v-if="!isLoading && filteredGallery.length === 0 && searchQuery" class="empty-state">
-      <el-icon class="empty-icon"><Picture /></el-icon>
-      <h3>没有找到相关内容</h3>
-      <p>试试搜索其他关键词吧！</p>
-    </div>
-    
-    <!-- 无数据状态 -->
-    <div v-if="!isLoading && galleryImages.length === 0" class="empty-state">
-      <el-icon class="empty-icon"><Picture /></el-icon>
-      <h3>暂无故事</h3>
-      <p>快来上面创作你的第一个故事吧！</p>
-    </div>
-
-    <!-- 图片预览对话框 -->
-    <el-dialog
-      v-model="isPreviewVisible"
-      title="图片预览"
-      width="50%"
-      center
-    >
-      <div class="image-preview-container" v-if="selectedImage">
-        <img :src="selectedImage" alt="预览" class="preview-image" />
-      </div>
-    </el-dialog>
-  </div>
-</template>
 
 <style scoped>
 /* 全局字体设置 - 使用本地64_fonts.ttf字体与主页面保持一致 */

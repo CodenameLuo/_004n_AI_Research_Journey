@@ -2151,7 +2151,9 @@ const burstBubble = (event) => {
   line-height: 1.5;
   resize: none;
   min-height: 3.2em;
+  max-height: 6em; /* 限制最大高度，超出时显示滚动条 */
   height: auto;
+  overflow-y: auto; /* 允许垂直滚动 */
 }
 
 .cartoon-textarea:focus {
@@ -2164,6 +2166,56 @@ const burstBubble = (event) => {
 .cartoon-textarea::placeholder {
   color: #cd853f;
   font-weight: 600;
+}
+
+/* 自定义滚动条样式 - 卡通风格 */
+.cartoon-textarea::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+.cartoon-textarea::-webkit-scrollbar-track {
+  background: rgba(255, 215, 0, 0.2);
+  border-radius: 10px;
+  margin: 4px;
+  border: 2px solid rgba(247, 169, 133, 0.5);
+}
+
+.cartoon-textarea::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff8c42, #ffb347);
+  border-radius: 10px;
+  border: 2px solid #f7a985;
+  box-shadow: 
+    0px 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.cartoon-textarea::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ffb347, #ffd700);
+  border-color: #ff8c42;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.3),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.cartoon-textarea::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #ff6347, #ff8c42);
+  box-shadow: 
+    0px 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2);
+  transform: scale(0.95);
+}
+
+.cartoon-textarea::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox 滚动条样式 */
+.cartoon-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: #ff8c42 rgba(255, 215, 0, 0.2);
 }
 
 /* Element Plus 全局字体覆盖 */
