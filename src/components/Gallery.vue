@@ -224,7 +224,7 @@ const closeMessage = (id) => {
 }
 
 // 后端API基础URL
-const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = 'http://192.168.1.103:5000'
 
 // 画廊图片数据
 const allStories = ref([]) // 所有故事数据
@@ -627,9 +627,10 @@ onUnmounted(() => {
 }
 
 .gallery-waterfall {
-  column-count: 3;
-  column-gap: 25px;
-  column-fill: balance;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 25px;
+  align-items: start;
 }
 
 .gallery-set {
@@ -639,12 +640,13 @@ onUnmounted(() => {
   background: #fffacd;
   transition: all 0.3s cubic-bezier(.4,2,.6,1);
   box-shadow: 0px 6px #ff6347;
-  margin-bottom: 25px;
+  margin-bottom: 0; /* 移除margin-bottom，因为grid gap会处理间距 */
   break-inside: avoid;
   page-break-inside: avoid;
   -webkit-column-break-inside: avoid;
   position: relative;
   animation: galleryCardFloat 6s ease-in-out infinite;
+  width: 100%; /* 确保卡片填满grid单元格 */
 }
 
 .gallery-set:nth-child(even) {
@@ -1156,21 +1158,10 @@ onUnmounted(() => {
   left: -10px;
   right: -10px;
   bottom: -10px;
-  background: radial-gradient(ellipse, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  background: transparent;
   border-radius: 25px;
-  animation: glowPulse 4s ease-in-out infinite;
+  animation: none;
   pointer-events: none;
-}
-
-@keyframes glowPulse {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
 }
 
 .preview-main-image {
@@ -1455,32 +1446,46 @@ onUnmounted(() => {
   .gallery {
     max-width: 1400px;
   }
+  
+  .gallery-waterfall {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
 }
 
 @media (max-width: 1400px) {
   .gallery {
     max-width: 1200px;
   }
+  
+  .gallery-waterfall {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
 }
 
 @media (max-width: 1200px) {
   .gallery-waterfall {
-    column-count: 2;
-    column-gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
   }
 }
 
 @media (max-width: 900px) {
   .gallery-waterfall {
-    column-count: 1;
-    column-gap: 0;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
   }
   
   .search-box {
     max-width: 100%;
   }
 }
+
 @media (max-width: 600px) {
+  .gallery-waterfall {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
   .images-grid-9 {
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
