@@ -382,15 +382,15 @@ const hasValidImages = computed(() => {
 
 // 风格选项 - 对应后端支持的风格
 const styleOptions = [
-  { label: '写实风', value: 'realistic' },
-  { label: '日本漫画风', value: 'japanese_manga' },
-  { label: '数字油画风', value: 'digital_painting' },
-  { label: '迪士尼皮克斯风', value: 'disney_pixar' },
-  { label: '摄影写真风格', value: 'photography' },
-  { label: '漫画书风格', value: 'comic_book' },
-  { label: '艺术线条风', value: 'artistic_line' },
-  { label: '黑白电影风', value: 'black_white_film' },
-  { label: '3D建模风', value: '3d_modeling' }
+  { label: '写实风', value: '写实风' },
+  { label: '日本漫画风', value: '日本漫画风' },
+  { label: '数字油画风', value: '数字油画风' },
+  { label: '迪士尼皮克斯风', value: '迪士尼皮克斯风' },
+  { label: '摄影写真风格', value: '摄影写真风格' },
+  { label: '漫画书风格', value: '漫画书风格' },
+  { label: '艺术线条风', value: '艺术线条风' },
+  { label: '黑白电影风', value: '黑白电影风' },
+  { label: '3D建模风', value: '3D建模风' }
 ]
 
 // 后端API基础URL
