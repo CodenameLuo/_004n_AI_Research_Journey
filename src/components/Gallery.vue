@@ -132,10 +132,10 @@
             <el-icon><Download /></el-icon>
             <span>下载图片</span>
           </button>
-          <button class="action-btn share-btn" @click="shareCurrentImage">
+          <!-- <button class="action-btn share-btn" @click="shareCurrentImage">
             <el-icon><Share /></el-icon>
             <span>分享图片</span>
-          </button>
+          </button> -->
         </div>
       </div>
     </div>
