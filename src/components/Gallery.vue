@@ -24,7 +24,7 @@
     <!-- 画廊内容 -->
     <div v-else class="gallery-waterfall">
       <div 
-        v-for="(set, index) in filteredGallery" 
+        v-for="(set, index) in displayedStories" 
         :key="set.id"
         class="gallery-set"
       >
@@ -52,18 +52,29 @@
       </div>
     </div>
 
+    <!-- 懒加载状态 -->
+    <div v-if="isLoadingMore" class="loading-more">
+      <el-skeleton :rows="1" animated />
+      <p>正在加载更多故事...</p>
+    </div>
+
     <!-- 空状态 -->
-    <div v-if="!isLoading && filteredGallery.length === 0 && searchQuery" class="empty-state">
+    <div v-if="!isLoading && displayedStories.length === 0 && searchQuery" class="empty-state">
       <el-icon class="empty-icon"><Picture /></el-icon>
       <h3>没有找到相关内容</h3>
       <p>试试搜索其他关键词吧！</p>
     </div>
     
     <!-- 无数据状态 -->
-    <div v-if="!isLoading && galleryImages.length === 0" class="empty-state">
+    <div v-if="!isLoading && allStories.length === 0" class="empty-state">
       <el-icon class="empty-icon"><Picture /></el-icon>
       <h3>暂无故事</h3>
       <p>快来上面创作你的第一个故事吧！</p>
+    </div>
+
+    <!-- 无更多数据提示 -->
+    <div v-if="!hasMoreData && displayedStories.length > 0 && !isLoadingMore" class="no-more-data">
+      <p>✨ 已经到底啦，期待更多精彩故事！ ✨</p>
     </div>
 
     <!-- 自定义精致图片预览弹出框 -->
@@ -128,141 +139,212 @@
         </div>
       </div>
     </div>
+
+    <!-- 原生消息提示容器 -->
+    <div class="native-message-container">
+      <div 
+        v-for="message in messages" 
+        :key="message.id"
+        :class="[
+          'native-message', 
+          `native-message--${message.type}`,
+          { 'native-message--visible': message.visible }
+        ]"
+        @click="closeMessage(message.id)"
+      >
+        <div class="native-message__icon">
+          <span v-if="message.type === 'success'">✅</span>
+          <span v-else-if="message.type === 'error'">❌</span>
+          <span v-else-if="message.type === 'warning'">⚠️</span>
+          <span v-else>ℹ️</span>
+        </div>
+        <div class="native-message__content">{{ message.content }}</div>
+        <div class="native-message__close">✕</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ZoomIn, Picture, Close, Download, Share } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+
+// 原生消息提示系统
+const messages = ref([])
+let messageId = 0
+
+// 显示消息的方法
+const showMessage = (content, type = 'info', duration = 3000) => {
+  const id = ++messageId
+  const message = {
+    id,
+    content,
+    type, // success, error, warning, info
+    visible: true
+  }
+  
+  messages.value.push(message)
+  
+  // 自动隐藏
+  setTimeout(() => {
+    const index = messages.value.findIndex(m => m.id === id)
+    if (index > -1) {
+      messages.value[index].visible = false
+      // 动画结束后移除
+      setTimeout(() => {
+        const removeIndex = messages.value.findIndex(m => m.id === id)
+        if (removeIndex > -1) {
+          messages.value.splice(removeIndex, 1)
+        }
+      }, 300)
+    }
+  }, duration)
+}
+
+// 消息类型方法
+const NativeMessage = {
+  success: (content, duration) => showMessage(content, 'success', duration),
+  error: (content, duration) => showMessage(content, 'error', duration),
+  warning: (content, duration) => showMessage(content, 'warning', duration),
+  info: (content, duration) => showMessage(content, 'info', duration)
+}
+
+// 手动关闭消息
+const closeMessage = (id) => {
+  const index = messages.value.findIndex(m => m.id === id)
+  if (index > -1) {
+    messages.value[index].visible = false
+    setTimeout(() => {
+      const removeIndex = messages.value.findIndex(m => m.id === id)
+      if (removeIndex > -1) {
+        messages.value.splice(removeIndex, 1)
+      }
+    }, 300)
+  }
+}
+
+// 后端API基础URL
+const API_BASE_URL = 'http://localhost:5000'
 
 // 画廊图片数据
-const galleryImages = ref([])
-const filteredGallery = ref([])
+const allStories = ref([]) // 所有故事数据
+const displayedStories = ref([]) // 当前显示的故事数据
+const filteredStories = ref([]) // 搜索过滤后的故事数据
 const searchQuery = ref('')
 const isLoading = ref(false)
 const selectedImage = ref(null)
 const isPreviewVisible = ref(false)
 
-// 模拟历史数据
-const mockHistoryData = [
-  {
-    id: 1,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${1000 + index}`
-    ),
-    createdAt: '2024-01-15',
-    userName: 'Alice',
-    style: '卡通风格'
-  },
-  {
-    id: 2,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${2000 + index}`
-    ),
-    createdAt: '2024-01-14',
-    userName: 'Bob',
-    style: '动漫风格'
-  },
-  {
-    id: 3,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${3000 + index}`
-    ),
-    createdAt: '2024-01-13',
-    userName: 'Charlie',
-    style: '奇幻风格'
-  },
-  {
-    id: 4,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${4000 + index}`
-    ),
-    createdAt: '2024-01-12',
-    userName: 'Daisy',
-    style: '水彩风格'
-  },
-  {
-    id: 5,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${5000 + index}`
-    ),
-    createdAt: '2024-01-11',
-    userName: 'Emma',
-    style: '油画风格'
-  },
-  {
-    id: 6,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${6000 + index}`
-    ),
-    createdAt: '2024-01-10',
-    userName: 'Frank',
-    style: '卡通风格'
-  },
-  {
-    id: 7,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${7000 + index}`
-    ),
-    createdAt: '2024-01-09',
-    userName: 'Grace',
-    style: '写实风格'
-  },
-  {
-    id: 8,
-    images: Array(9).fill(null).map((_, index) => 
-      `https://picsum.photos/300/300?random=${8000 + index}`
-    ),
-    createdAt: '2024-01-08',
-    userName: 'Henry',
-    style: '动漫风格'
-  }
-]
+// 懒加载相关
+const itemsPerPage = 6 // 每页显示的故事数量
+const currentPage = ref(1)
+const isLoadingMore = ref(false)
+const hasMoreData = ref(true)
 
-// 加载画廊数据
-const loadGalleryData = async () => {
+// 从后端API加载故事数据
+const loadStoriesFromAPI = async (page = 1, search = '') => {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      per_page: itemsPerPage.toString()
+    })
+    
+    if (search.trim()) {
+      params.append('search', search.trim())
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/stories?${params}`)
+    
+    if (!response.ok) {
+      throw new Error('获取故事数据失败')
+    }
+    
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('从API加载故事失败:', error)
+    NativeMessage.error('加载故事失败，请检查网络连接', 5000)
+    return { stories: [], pagination: { has_more: false, total_stories: 0 } }
+  }
+}
+
+// 初始加载故事数据
+const loadInitialStories = async () => {
   isLoading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    galleryImages.value = mockHistoryData
-    filteredGallery.value = galleryImages.value
+    const data = await loadStoriesFromAPI(1, searchQuery.value)
+    allStories.value = data.stories || []
+    displayedStories.value = [...allStories.value]
+    hasMoreData.value = data.pagination?.has_more || false
+    currentPage.value = 1
+    
+    console.log(`加载了 ${allStories.value.length} 个故事`)
   } catch (error) {
-    console.error('加载画廊数据失败:', error)
+    console.error('初始加载故事失败:', error)
   } finally {
     isLoading.value = false
   }
 }
 
-// 搜索过滤功能
-const filterGallery = () => {
-  if (!searchQuery.value.trim()) {
-    filteredGallery.value = galleryImages.value
-    return
-  }
+// 加载更多数据
+const loadMoreStories = async () => {
+  if (isLoadingMore.value || !hasMoreData.value) return
   
-  const query = searchQuery.value.toLowerCase()
-  filteredGallery.value = galleryImages.value.filter(item => 
-    item.userName.toLowerCase().includes(query) || 
-    item.style.toLowerCase().includes(query)
-  )
+  isLoadingMore.value = true
+  
+  try {
+    const nextPage = currentPage.value + 1
+    const data = await loadStoriesFromAPI(nextPage, searchQuery.value)
+    
+    if (data.stories && data.stories.length > 0) {
+      // 将新数据添加到现有数据
+      const newStories = data.stories
+      allStories.value.push(...newStories)
+      displayedStories.value.push(...newStories)
+      currentPage.value = nextPage
+      hasMoreData.value = data.pagination?.has_more || false
+      
+      console.log(`加载了更多 ${newStories.length} 个故事，总计 ${allStories.value.length} 个`)
+    } else {
+      hasMoreData.value = false
+    }
+  } catch (error) {
+    console.error('加载更多故事失败:', error)
+    NativeMessage.error('加载更多故事失败', 5000)
+  } finally {
+    isLoadingMore.value = false
+  }
+}
+
+// 搜索过滤功能 - 全局搜索（从后端获取）
+const filterGallery = async () => {
+  // 重新从API搜索
+  await loadInitialStories()
+}
+
+// 刷新画廊数据 - 供外部调用
+const refreshGallery = async () => {
+  console.log('刷新画廊数据...')
+  await loadInitialStories()
+  NativeMessage.success('画廊数据已更新！', 3000)
+}
+
+// 滚动事件处理 - 无限滚动
+const handleScroll = () => {
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+  
+  // 当滚动到距离底部200px时触发加载
+  if (scrollTop + windowHeight >= documentHeight - 200) {
+    loadMoreStories()
+  }
 }
 
 // 预览图片
 const previewImage = (image) => {
   selectedImage.value = image
   isPreviewVisible.value = true
-}
-
-// 下载图片集
-const downloadImageSet = (images, setId) => {
-  images.forEach((url, index) => {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `画廊_${setId}_${index + 1}.jpg`
-    link.click()
-  })
 }
 
 // 关闭预览
@@ -281,13 +363,30 @@ const handleKeydown = (event) => {
 // 下载当前图片
 const downloadCurrentImage = () => {
   if (selectedImage.value) {
-    const link = document.createElement('a')
-    link.href = selectedImage.value
-    link.download = `画廊图片_${Date.now()}.jpg`
-    link.click()
+    // 处理base64图片
+    if (selectedImage.value.startsWith('data:image')) {
+      const link = document.createElement('a')
+      link.href = selectedImage.value
+      link.download = `画廊图片_${Date.now()}.png`
+      link.click()
+    } else {
+      // 处理URL图片
+      fetch(selectedImage.value)
+        .then(response => response.blob())
+        .then(blob => {
+          const link = document.createElement('a')
+          link.href = URL.createObjectURL(blob)
+          link.download = `画廊图片_${Date.now()}.jpg`
+          link.click()
+          URL.revokeObjectURL(link.href)
+        })
+        .catch(error => {
+          console.error('下载失败:', error)
+          NativeMessage.error('下载失败！', 5000)
+        })
+    }
     
-    // 提示用户
-    ElMessage.success('图片下载开始！')
+    NativeMessage.success('图片下载开始！', 3000)
   }
 }
 
@@ -296,14 +395,32 @@ const shareCurrentImage = () => {
   if (selectedImage.value) {
     // 检查是否支持 Web Share API
     if (navigator.share) {
-      navigator.share({
-        title: '精彩的故事图片',
-        text: '快来看看这张精彩的故事图片！',
-        url: selectedImage.value
-      }).catch((error) => {
-        console.log('分享失败:', error)
-        fallbackShare()
-      })
+      if (selectedImage.value.startsWith('data:image')) {
+        // 处理base64图片分享
+        fetch(selectedImage.value)
+          .then(response => response.blob())
+          .then(blob => {
+            const file = new File([blob], `画廊图片_${Date.now()}.png`, { type: 'image/png' })
+            return navigator.share({
+              title: '精彩的故事图片',
+              text: '快来看看这张精彩的故事图片！',
+              files: [file]
+            })
+          })
+          .catch(error => {
+            console.log('分享失败:', error)
+            fallbackShare()
+          })
+      } else {
+        navigator.share({
+          title: '精彩的故事图片',
+          text: '快来看看这张精彩的故事图片！',
+          url: selectedImage.value
+        }).catch(error => {
+          console.log('分享失败:', error)
+          fallbackShare()
+        })
+      }
     } else {
       fallbackShare()
     }
@@ -314,24 +431,60 @@ const shareCurrentImage = () => {
 const fallbackShare = () => {
   // 复制链接到剪贴板
   if (navigator.clipboard && selectedImage.value) {
-    navigator.clipboard.writeText(selectedImage.value).then(() => {
-      ElMessage.success('图片链接已复制到剪贴板！')
+    const shareText = selectedImage.value.startsWith('data:image') 
+      ? '这是一张精彩的AI故事图片！' 
+      : selectedImage.value
+    
+    navigator.clipboard.writeText(shareText).then(() => {
+      NativeMessage.success('分享内容已复制到剪贴板！', 3000)
     }).catch(() => {
-      ElMessage.info('分享功能即将上线！')
+      NativeMessage.info('分享功能即将上线！', 5000)
     })
   } else {
-    ElMessage.info('分享功能即将上线！')
+    NativeMessage.info('分享功能即将上线！', 5000)
   }
 }
 
-onMounted(() => {
-  loadGalleryData()
+// 检查后端连接
+const checkBackendConnection = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`)
+    if (response.ok) {
+      console.log('后端连接正常')
+      return true
+    } else {
+      throw new Error('后端服务响应异常')
+    }
+  } catch (error) {
+    console.error('后端连接失败:', error)
+    NativeMessage.warning('画廊服务暂时不可用，请稍后再试', 5000)
+    return false
+  }
+}
+
+// 暴露方法给父组件
+defineExpose({
+  refreshGallery
+})
+
+onMounted(async () => {
+  // 检查后端连接
+  const isConnected = await checkBackendConnection()
+  
+  if (isConnected) {
+    // 加载初始数据
+    await loadInitialStories()
+  }
+  
+  // 添加滚动监听
+  window.addEventListener('scroll', handleScroll)
   // 添加键盘事件监听
   document.addEventListener('keydown', handleKeydown)
 })
 
 // 组件卸载时清理事件监听
 onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
   document.removeEventListener('keydown', handleKeydown)
 })
 </script>
@@ -1376,5 +1529,287 @@ onUnmounted(() => {
 
 :deep(.el-icon) {
   font-weight: 800;
+}
+
+/* 懒加载状态样式 */
+.loading-more {
+  text-align: center;
+  padding: 30px 20px;
+  color: #8b4513;
+}
+
+.loading-more p {
+  font-size: 1.2rem;
+  margin-top: 15px;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #ffd700;
+  letter-spacing: 0.5px;
+  animation: loadingPulse 2s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 无更多数据提示样式 */
+.no-more-data {
+  text-align: center;
+  padding: 40px 20px;
+  margin-top: 20px;
+  border-top: 3px dashed #f7a985;
+}
+
+.no-more-data p {
+  color: #8b4513;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #ffd700;
+  letter-spacing: 1px;
+  margin: 0;
+  animation: sparkleText 3s ease-in-out infinite;
+}
+
+@keyframes sparkleText {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+/* 原生消息提示样式 - 与StoryDiffusion保持一致 */
+.native-message-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.native-message {
+  background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
+  border: 4px solid #f7a985;
+  border-radius: 20px;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.4s cubic-bezier(.4, 2, .6, 1);
+  cursor: pointer;
+  pointer-events: auto;
+  font-family: 'CuteFont64', 'Comic Sans MS', cursive;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #8b4513;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+  opacity: 0;
+  transform: translateX(100%) scale(0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.native-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+}
+
+.native-message:hover::before {
+  left: 100%;
+}
+
+.native-message:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0px 12px 24px rgba(255, 99, 71, 0.4),
+    0px 6px 12px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+}
+
+.native-message--visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.native-message__icon {
+  font-size: 1.8rem;
+  margin-right: 15px;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.1));
+  animation: iconBounce 2s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.native-message__content {
+  flex-grow: 1;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.native-message__close {
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-left: 15px;
+  font-weight: 800;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  color: #8b4513;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  padding: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+}
+
+.native-message__close:hover {
+  opacity: 1;
+  background: rgba(255, 99, 71, 0.2);
+  transform: scale(1.1);
+}
+
+/* 不同类型的消息样式 */
+.native-message--success {
+  border-color: #90ee90;
+  background: linear-gradient(135deg, #f0fff0 0%, #e6ffe6 100%);
+  color: #2e8b57;
+}
+
+.native-message--success .native-message__icon {
+  color: #2e8b57;
+  animation: successPulse 2s ease-in-out infinite;
+}
+
+@keyframes successPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.native-message--error {
+  border-color: #ff6b6b;
+  background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+  color: #dc143c;
+}
+
+.native-message--error .native-message__icon {
+  color: #dc143c;
+  animation: errorShake 0.5s ease-in-out;
+}
+
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.native-message--warning {
+  border-color: #ffa500;
+  background: linear-gradient(135deg, #fffacd 0%, #fff8dc 100%);
+  color: #b8860b;
+}
+
+.native-message--warning .native-message__icon {
+  color: #ff8c00;
+  animation: warningFlash 1s ease-in-out infinite;
+}
+
+@keyframes warningFlash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.native-message--info {
+  border-color: #87ceeb;
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+  color: #4682b4;
+}
+
+.native-message--info .native-message__icon {
+  color: #4682b4;
+  animation: infoRotate 3s linear infinite;
+}
+
+@keyframes infoRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .native-message-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  .native-message {
+    padding: 12px 15px;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    border-width: 3px;
+  }
+
+  .native-message__icon {
+    font-size: 1.5rem;
+    margin-right: 10px;
+  }
+
+  .native-message__close {
+    font-size: 1rem;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-left: 10px;
+  }
 }
 </style> 

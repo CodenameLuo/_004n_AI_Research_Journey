@@ -230,7 +230,7 @@
             </el-icon>
             {{ isGenerating ? '正在生成中...' : '🎨 生成故事图片' }}
           </el-button>
-          <div v-if="!selfieImage || descriptionImages.filter(item => item.image).length !== 8 || userInfo.descriptions.filter(desc => desc.trim()).length !== 8" class="generate-hint">
+          <!-- <div v-if="!selfieImage || descriptionImages.filter(item => item.image).length !== 8 || userInfo.descriptions.filter(desc => desc.trim()).length !== 8" class="generate-hint">
             <p>✨ 完成以下步骤后即可生成：</p>
             <ul>
               <li :class="{ completed: selfieImage }">
@@ -246,7 +246,7 @@
                 填写所有图片描述 ({{ userInfo.descriptions.filter(desc => desc.trim()).length }}/8)
               </li>
             </ul>
-          </div>
+          </div> -->
         </div>
       </div>
 
@@ -258,17 +258,28 @@
 
         <!-- 右上角操作按钮 -->
         <div class="preview-corner-actions">
-          <div class="corner-button download-btn" @click="downloadAllImages" title="批量下载">
+          <div 
+            class="corner-button download-btn" 
+            :class="{ 'disabled': !hasValidImages }"
+            @click="downloadAllImages" 
+            :title="hasValidImages ? '批量下载' : '请先生成图片'"
+          >
             <el-icon>
               <Download />
             </el-icon>
           </div>
-          <div class="corner-button share-btn" @click="shareAllImages" title="批量分享">
+          <div 
+            class="corner-button share-btn" 
+            :class="{ 'disabled': !hasValidImages }"
+            @click="shareAllImages" 
+            :title="hasValidImages ? '批量分享' : '请先生成图片'"
+          >
             <el-icon>
               <Share />
             </el-icon>
           </div>
         </div>
+        
         <div class="preview-grid">
           <div v-for="(image, index) in generatedImages" :key="index" class="preview-item">
             <div class="preview-placeholder" v-if="!image">
@@ -285,11 +296,6 @@
                     <Download />
                   </el-icon>
                 </el-button>
-                <el-button size="small" @click="shareImage(image)">
-                  <el-icon>
-                    <Share />
-                  </el-icon>
-                </el-button>
               </div>
             </div>
             <div class="preview-label">{{ index === 0 ? '封面' : index }}</div>
@@ -300,16 +306,41 @@
 
     <!-- 底部：画廊组件 -->
     <div class="gallery-section">
-      <Gallery />
+      <Gallery ref="galleryRef" />
+    </div>
+
+    <!-- 原生消息提示容器 -->
+    <div class="native-message-container">
+      <div 
+        v-for="message in messages" 
+        :key="message.id"
+        :class="[
+          'native-message', 
+          `native-message--${message.type}`,
+          { 'native-message--visible': message.visible }
+        ]"
+        @click="closeMessage(message.id)"
+      >
+        <div class="native-message__icon">
+          <span v-if="message.type === 'success'">✅</span>
+          <span v-else-if="message.type === 'error'">❌</span>
+          <span v-else-if="message.type === 'warning'">⚠️</span>
+          <span v-else>ℹ️</span>
+        </div>
+        <div class="native-message__content">{{ message.content }}</div>
+        <div class="native-message__close">✕</div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import Gallery from '../components/Gallery.vue'
 import { Plus, Delete, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
+
+// 画廊组件引用
+const galleryRef = ref(null)
 
 // 响应式数据
 const userInfo = reactive({
@@ -344,17 +375,22 @@ const isRecognitionActive = ref(false)
 // 自定义下拉菜单状态
 const isStyleSelectOpen = ref(false)
 
+// 计算是否有有效的图片
+const hasValidImages = computed(() => {
+  return generatedImages.value.some(url => url)
+})
+
 // 风格选项 - 对应后端支持的风格
 const styleOptions = [
-  { label: '写实风', value: '写实风' },
-  { label: '日本漫画风', value: '日本漫画风' },
-  { label: '数字油画风', value: '数字油画风' },
-  { label: '迪士尼皮克斯风', value: '迪士尼皮克斯风' },
-  { label: '摄影写真风格', value: '摄影写真风格' },
-  { label: '漫画书风格', value: '漫画书风格' },
-  { label: '艺术线条风', value: '艺术线条风' },
-  { label: '黑白电影风', value: '黑白电影风' },
-  { label: '3D建模风', value: '3D建模风' }
+  { label: '写实风', value: 'realistic' },
+  { label: '日本漫画风', value: 'japanese_manga' },
+  { label: '数字油画风', value: 'digital_painting' },
+  { label: '迪士尼皮克斯风', value: 'disney_pixar' },
+  { label: '摄影写真风格', value: 'photography' },
+  { label: '漫画书风格', value: 'comic_book' },
+  { label: '艺术线条风', value: 'artistic_line' },
+  { label: '黑白电影风', value: 'black_white_film' },
+  { label: '3D建模风', value: '3d_modeling' }
 ]
 
 // 后端API基础URL
@@ -362,6 +398,238 @@ const API_BASE_URL = 'http://localhost:5000'
 
 // 当前会话ID
 const sessionId = ref('')
+
+// 翻译缓存
+const translationCache = new Map()
+
+// 原生消息提示系统
+const messages = ref([])
+let messageId = 0
+
+// 翻译功能 - 将中文描述翻译为英文
+const translateToEnglish = async (chineseText) => {
+  // 检查缓存
+  if (translationCache.has(chineseText)) {
+    return translationCache.get(chineseText)
+  }
+  
+  try {
+    // 主要翻译服务: MyMemory API
+    const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chineseText)}&langpair=zh|en`)
+    
+    if (!response.ok) {
+      throw new Error('Primary translation API request failed')
+    }
+    
+    const data = await response.json()
+    
+    if (data.responseStatus === 200 && data.responseData) {
+      const translatedText = data.responseData.translatedText
+      // 缓存翻译结果
+      translationCache.set(chineseText, translatedText)
+      return translatedText
+    } else {
+      throw new Error('Primary translation failed')
+    }
+  } catch (error) {
+    console.warn('主要翻译服务失败，尝试备用方案:', error)
+    
+    try {
+      // 备用翻译服务: LibreTranslate (如果有的话)
+      const fallbackResponse = await fetch('https://libretranslate.de/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          q: chineseText,
+          source: 'zh',
+          target: 'en',
+          format: 'text'
+        })
+      })
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json()
+        if (fallbackData.translatedText) {
+          const translatedText = fallbackData.translatedText
+          translationCache.set(chineseText, translatedText)
+          return translatedText
+        }
+      }
+    } catch (fallbackError) {
+      console.warn('备用翻译服务也失败:', fallbackError)
+    }
+    
+    // 所有翻译服务都失败时，使用简单的关键词映射作为最后方案
+    const keywordTranslations = {
+      '男孩': 'boy',
+      '女孩': 'girl', 
+      '快乐': 'happy',
+      '悲伤': 'sad',
+      '美丽': 'beautiful',
+      '可爱': 'cute',
+      '帅气': 'handsome',
+      '笑容': 'smile',
+      '公园': 'park',
+      '学校': 'school',
+      '家': 'home',
+      '朋友': 'friend',
+      '游戏': 'game',
+      '阅读': 'reading',
+      '运动': 'sports',
+      '音乐': 'music',
+      '画画': 'drawing',
+      '唱歌': 'singing',
+      '跳舞': 'dancing'
+    }
+    
+    let result = chineseText
+    for (const [chinese, english] of Object.entries(keywordTranslations)) {
+      result = result.replace(new RegExp(chinese, 'g'), english)
+    }
+    
+    console.warn('使用关键词映射翻译，可能不够准确')
+    return result
+  }
+}
+
+// 批量翻译描述
+const translateDescriptions = async (descriptions) => {
+  try {
+    const validDescriptions = descriptions.filter(desc => desc.trim())
+    
+    if (validDescriptions.length === 0) {
+      return descriptions
+    }
+    
+    // 创建一个进度消息ID，用于更新同一个消息
+    let progressMessageId = null
+    
+    const translatedDescriptions = []
+    
+    for (let i = 0; i < descriptions.length; i++) {
+      const desc = descriptions[i]
+      if (!desc.trim()) {
+        translatedDescriptions.push(desc)
+        continue
+      }
+      
+      try {
+        // 更新进度消息（如果存在则更新，否则创建新的）
+        const validIndex = validDescriptions.findIndex(vd => vd === desc) + 1
+        const progressText = `翻译进度: ${validIndex}/${validDescriptions.length}`
+        
+        if (progressMessageId !== null) {
+          // 更新现有消息
+          const messageIndex = messages.value.findIndex(m => m.id === progressMessageId)
+          if (messageIndex > -1) {
+            messages.value[messageIndex].content = progressText
+          }
+        } else {
+          // 创建新的进度消息
+          progressMessageId = ++messageId
+          const message = {
+            id: progressMessageId,
+            content: progressText,
+            type: 'info',
+            visible: true
+          }
+          messages.value.push(message)
+        }
+        
+        const translated = await translateToEnglish(desc)
+        translatedDescriptions.push(translated)
+        
+        // 添加短暂延迟避免API限制
+        if (i < descriptions.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+      } catch (error) {
+        console.warn(`翻译第${i + 1}条描述失败:`, error)
+        translatedDescriptions.push(desc) // 使用原始文本
+      }
+    }
+    
+    // 隐藏进度消息
+    if (progressMessageId !== null) {
+      const progressIndex = messages.value.findIndex(m => m.id === progressMessageId)
+      if (progressIndex > -1) {
+        messages.value[progressIndex].visible = false
+        setTimeout(() => {
+          const removeIndex = messages.value.findIndex(m => m.id === progressMessageId)
+          if (removeIndex > -1) {
+            messages.value.splice(removeIndex, 1)
+          }
+        }, 300)
+      }
+    }
+    
+    const translatedCount = translatedDescriptions.filter((desc, i) => 
+      desc !== descriptions[i] && descriptions[i].trim()
+    ).length
+    
+    if (translatedCount > 0) {
+      NativeMessage.success(`成功翻译${translatedCount}条描述！`)
+    }
+    
+    return translatedDescriptions
+  } catch (error) {
+    console.warn('批量翻译失败:', error)
+    NativeMessage.warning('翻译服务暂时不可用，将使用原始描述')
+    return descriptions
+  }
+}
+
+// 显示消息的方法
+const showMessage = (content, type = 'info', duration = 3000) => {
+  const id = ++messageId
+  const message = {
+    id,
+    content,
+    type, // success, error, warning, info
+    visible: true
+  }
+  
+  messages.value.push(message)
+  
+  // 自动隐藏
+  setTimeout(() => {
+    const index = messages.value.findIndex(m => m.id === id)
+    if (index > -1) {
+      messages.value[index].visible = false
+      // 动画结束后移除
+      setTimeout(() => {
+        const removeIndex = messages.value.findIndex(m => m.id === id)
+        if (removeIndex > -1) {
+          messages.value.splice(removeIndex, 1)
+        }
+      }, 300)
+    }
+  }, duration)
+}
+
+// 消息类型方法
+const NativeMessage = {
+  success: (content, duration) => showMessage(content, 'success', duration),
+  error: (content, duration) => showMessage(content, 'error', duration),
+  warning: (content, duration) => showMessage(content, 'warning', duration),
+  info: (content, duration) => showMessage(content, 'info', duration)
+}
+
+// 手动关闭消息
+const closeMessage = (id) => {
+  const index = messages.value.findIndex(m => m.id === id)
+  if (index > -1) {
+    messages.value[index].visible = false
+    setTimeout(() => {
+      const removeIndex = messages.value.findIndex(m => m.id === id)
+      if (removeIndex > -1) {
+        messages.value.splice(removeIndex, 1)
+      }
+    }, 300)
+  }
+}
 
 // 文件上传处理
 const handleSelfieUpload = (file) => {
@@ -391,12 +659,12 @@ const validateImage = (file) => {
   const isJPG = file.type === 'image/jpeg' || file.type === 'image/jpg'
   const isPNG = file.type === 'image/png'
   if (!isJPG && !isPNG) {
-    ElMessage.error('请上传JPG或PNG格式的图片！')
+    NativeMessage.error('请上传JPG或PNG格式的图片！')
     return false
   }
   const isLt10M = file.size / 1024 / 1024 < 10
   if (!isLt10M) {
-    ElMessage.error('图片大小不能超过10MB！')
+    NativeMessage.error('图片大小不能超过10MB！')
     return false
   }
   return true
@@ -449,48 +717,53 @@ const uploadImages = async () => {
 const generateImages = async () => {
   // 验证输入
   if (!selfieImage.value) {
-    ElMessage.warning('请先上传自拍照！')
+    NativeMessage.warning('请先上传自拍照！')
     return
   }
   if (!userInfo.name.trim()) {
-    ElMessage.warning('请输入姓名！')
+    NativeMessage.warning('请输入姓名！')
     return
   }
   if (!userInfo.gender) {
-    ElMessage.warning('请选择性别！')
+    NativeMessage.warning('请选择性别！')
     return
   }
   if (!userInfo.style) {
-    ElMessage.warning('请选择图片风格！')
+    NativeMessage.warning('请选择图片风格！')
     return
   }
   
   // 检查是否所有描述都已填写
   const emptyDescriptions = userInfo.descriptions.filter(desc => !desc.trim())
   if (emptyDescriptions.length > 0) {
-    ElMessage.warning('请填写所有图片描述！')
+    NativeMessage.warning('请填写所有图片描述！')
     return
   }
   
   // 检查是否上传了所有图片
   const uploadedImages = descriptionImages.value.filter(item => item.image !== null)
   if (uploadedImages.length !== 8) {
-    ElMessage.warning('请上传所有8张参考图片！')
+    NativeMessage.warning('请上传所有8张参考图片！')
     return
   }
   
   isGenerating.value = true
   
   try {
-    ElMessage.info('正在上传图片...')
+    NativeMessage.info('正在上传图片...')
     
     // 1. 上传图片
     const uploadResult = await uploadImages()
     sessionId.value = uploadResult.session_id
     
-    ElMessage.info('图片上传成功，开始生成...')
+    NativeMessage.info('图片上传成功，正在翻译描述...')
     
-    // 2. 调用生成接口
+    // 2. 翻译描述为英文
+    const translatedDescriptions = await translateDescriptions(userInfo.descriptions)
+    
+    NativeMessage.info('翻译完成，开始生成图片...')
+    
+    // 3. 调用生成接口，使用翻译后的英文描述
     const generateResponse = await fetch(`${API_BASE_URL}/generate`, {
       method: 'POST',
       headers: {
@@ -498,9 +771,9 @@ const generateImages = async () => {
       },
       body: JSON.stringify({
         session_id: sessionId.value,
-        prompts: userInfo.descriptions,
+        prompts: translatedDescriptions, // 使用翻译后的英文描述
         style: userInfo.style,
-        gender: userInfo.gender === 'male' ? '男' : '女'
+        gender: userInfo.gender === 'male' ? 'male' : 'female' // 也改为英文
       })
     })
     
@@ -511,16 +784,16 @@ const generateImages = async () => {
     
     const generateResult = await generateResponse.json()
     
-    // 3. 处理生成结果 - 使用base64图片
+    // 4. 处理生成结果 - 使用base64图片
     generatedImages.value = generateResult.images.map(img => 
       `data:image/png;base64,${img.base64}`
     )
     
-    ElMessage.success('图片生成成功！')
+    NativeMessage.success('图片生成成功！')
     
   } catch (error) {
     console.error('生成错误:', error)
-    ElMessage.error(error.message || '生成失败，请重试！')
+    NativeMessage.error(error.message || '生成失败，请重试！')
     // 重置生成状态
     generatedImages.value = Array(9).fill(null)
   } finally {
@@ -549,19 +822,25 @@ const downloadImage = (url, index) => {
       })
       .catch(error => {
         console.error('下载失败:', error)
-        ElMessage.error('下载失败！')
+        NativeMessage.error('下载失败！')
       })
   }
 }
 
 const downloadAllImages = () => {
-  const validImages = generatedImages.value.filter(url => url)
-  if (validImages.length === 0) {
-    ElMessage.warning('没有可下载的图片！')
+  // 检查是否禁用状态
+  if (!hasValidImages.value) {
+    NativeMessage.warning('请先生成图片再进行批量下载！')
     return
   }
   
-  ElMessage.info(`开始下载${validImages.length}张图片...`)
+  const validImages = generatedImages.value.filter(url => url)
+  if (validImages.length === 0) {
+    NativeMessage.warning('没有可下载的图片！')
+    return
+  }
+  
+  NativeMessage.info(`开始下载${validImages.length}张图片...`)
   generatedImages.value.forEach((url, index) => {
     if (url) {
       // 延迟下载，避免浏览器阻止多文件下载
@@ -571,62 +850,86 @@ const downloadAllImages = () => {
 }
 
 // 分享功能
-const shareImage = async (url) => {
-  try {
-    if (navigator.share && url.startsWith('data:image')) {
-      // 将base64转换为Blob用于分享
-      const response = await fetch(url)
-      const blob = await response.blob()
-      const file = new File([blob], `${userInfo.name || '故事'}图片.png`, { type: 'image/png' })
-      
-      await navigator.share({
-        title: `${userInfo.name}的AI故事`,
-        text: '看看我用AI创作的故事图片！',
-        files: [file]
-      })
-    } else {
-      // 降级处理：复制链接到剪贴板
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(url)
-        ElMessage.success('图片链接已复制到剪贴板！')
-      } else {
-        ElMessage.info('请手动复制图片进行分享')
-}
-    }
-  } catch (error) {
-    console.error('分享失败:', error)
-    // 再次降级：提供下载选项
-    ElMessage.info('分享失败，建议下载图片后手动分享')
-  }
-}
-
 const shareAllImages = async () => {
+  // 检查是否禁用状态
+  if (!hasValidImages.value) {
+    NativeMessage.warning('请先生成图片再进行批量分享！')
+    return
+  }
+  
   const validImages = generatedImages.value.filter(url => url)
   if (validImages.length === 0) {
-    ElMessage.warning('没有可分享的图片！')
+    NativeMessage.warning('没有可分享的图片！')
+    return
+  }
+  
+  // 验证必需信息
+  if (!userInfo.name.trim()) {
+    NativeMessage.warning('请先填写姓名才能分享到画廊！')
+    return
+  }
+  
+  if (!userInfo.style) {
+    NativeMessage.warning('请先选择图片风格才能分享到画廊！')
     return
   }
   
   try {
-    if (navigator.share) {
-      // 分享故事集合信息
-      await navigator.share({
-        title: `${userInfo.name}的AI故事集`,
-        text: `我用AI创作了一个包含${validImages.length}张图片的故事！`,
-        url: window.location.href
-      })
-    } else {
-      // 降级处理：复制页面链接
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(window.location.href)
-        ElMessage.success('页面链接已复制到剪贴板！')
-      } else {
-        ElMessage.info('请手动分享您的故事')
-      }
+    NativeMessage.info('正在翻译描述并分享到画廊...')
+    
+    // 翻译描述为英文用于后端存储
+    const validDescriptions = userInfo.descriptions.filter(desc => desc.trim())
+    const translatedDescriptions = await translateDescriptions(validDescriptions)
+    
+    // 创建故事数据对象
+    const storyData = {
+      userName: userInfo.name.trim(),
+      style: userInfo.style,
+      images: validImages, // base64图片数据
+      descriptions: translatedDescriptions, // 使用翻译后的英文描述
+      originalDescriptions: validDescriptions // 保留原始中文描述用于前端显示
     }
+    
+    // 发送到后端API
+    const response = await fetch(`${API_BASE_URL}/stories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(storyData)
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || '分享失败')
+    }
+    
+    const result = await response.json()
+    
+    // 通知画廊组件刷新数据
+    if (galleryRef.value && galleryRef.value.refreshGallery) {
+      await galleryRef.value.refreshGallery()
+    }
+    
+    NativeMessage.success(`${userInfo.name}的故事已成功分享到画廊！现在所有用户都能看到你的作品了 🎉`)
+    
+    // // 如果支持原生分享，也执行原生分享
+    // if (navigator.share) {
+    //   try {
+    //     await navigator.share({
+    //       title: `${userInfo.name}的AI故事集`,
+    //       text: `我用AI创作了一个包含${validImages.length}张图片的故事！快来画廊看看吧！`,
+    //       url: window.location.href
+    //     })
+    //   } catch (shareError) {
+    //     // 原生分享失败不影响主要功能
+    //     console.log('原生分享取消或失败:', shareError)
+    //   }
+    // }
+    
   } catch (error) {
-    console.error('批量分享失败:', error)
-    ElMessage.info('建议逐个下载图片进行分享')
+    console.error('分享到画廊失败:', error)
+    NativeMessage.error(`分享失败: ${error.message}`)
   }
 }
 
@@ -687,16 +990,16 @@ const initSpeechRecognition = () => {
       
       switch (event.error) {
         case 'no-speech':
-          ElMessage.warning('没有检测到语音输入')
+          NativeMessage.warning('没有检测到语音输入')
           break
         case 'network':
-          ElMessage.error('网络错误，请检查网络连接')
+          NativeMessage.error('网络错误，请检查网络连接')
           break
         case 'not-allowed':
-          ElMessage.error('麦克风权限被拒绝，请允许使用麦克风')
+          NativeMessage.error('麦克风权限被拒绝，请允许使用麦克风')
           break
         default:
-          ElMessage.error('语音识别失败，请重试')
+          NativeMessage.error('语音识别失败，请重试')
       }
     }
 
@@ -715,7 +1018,7 @@ const initSpeechRecognition = () => {
 // 开始录音
 const startRecording = (index) => {
   if (!isRecognitionSupported.value) {
-    ElMessage.warning('当前浏览器不支持语音输入功能')
+    NativeMessage.warning('当前浏览器不支持语音输入功能')
     return
   }
 
@@ -742,12 +1045,12 @@ const startRecordingInternal = (index) => {
   
   try {
     recognition.value.start()
-    ElMessage.info('开始语音输入，松开停止')
+    NativeMessage.info('开始语音输入，松开停止')
   } catch (error) {
     console.error('启动语音识别失败:', error)
     recordingIndex.value = -1
     isRecognitionActive.value = false
-    ElMessage.error('语音输入启动失败')
+    NativeMessage.error('语音输入启动失败')
   }
 }
 
@@ -821,7 +1124,7 @@ const checkBackendHealth = async () => {
     }
   } catch (error) {
     console.error('后端服务连接失败:', error)
-    ElMessage.warning('后端服务未启动，请先启动Flask后端服务！')
+    NativeMessage.warning('后端服务未启动，请先启动Flask后端服务！')
     return false
   }
 }
@@ -2058,16 +2361,12 @@ onUnmounted(() => {
 
 .image-actions {
   position: absolute;
-  bottom: 8px;
+  top: 8px;
   right: 8px;
   display: flex;
   gap: 5px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.preview-image:hover .image-actions {
   opacity: 1;
+  transition: all 0.3s ease;
 }
 
 /* 画廊区域 */
@@ -3111,5 +3410,708 @@ onUnmounted(() => {
 
 :deep(.el-icon) {
   font-weight: 800;
+}
+
+/* 禁用状态的批量操作按钮样式 */
+.corner-button.disabled {
+  background: linear-gradient(135deg, #cccccc, #999999) !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+  border-color: #bbbbbb !important;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2) !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.corner-button.disabled::before {
+  display: none !important;
+}
+
+.corner-button.disabled:hover {
+  background: linear-gradient(135deg, #cccccc, #999999) !important;
+  transform: none !important;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2) !important;
+}
+
+.corner-button.disabled .el-icon {
+  color: #666666 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+/* 画廊区域 */
+.gallery-section {
+  margin-top: 20px;
+}
+
+.gallery-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #8b4513;
+  margin-bottom: 15px;
+  text-shadow: 2px 2px 0px #ffd700;
+  letter-spacing: 1px;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow: 2px 2px 0px #ffd700;
+  }
+  50% {
+    text-shadow: 2px 2px 0px #ffd700, 0 0 15px rgba(255, 215, 0, 0.6);
+  }
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.gallery-item {
+  background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
+  border: 4px solid #f7a985;
+  border-radius: 20px;
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.gallery-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.gallery-item:hover::before {
+  left: 100%;
+}
+
+.gallery-item:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0px 6px 12px rgba(255, 140, 66, 0.3);
+}
+
+.gallery-item .gallery-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 15px;
+  margin-bottom: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.gallery-item:hover .gallery-image {
+  transform: scale(1.05);
+  box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gallery-item .gallery-info {
+  font-size: 0.9rem;
+  color: #8b4513;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+  margin-bottom: 10px;
+}
+
+.gallery-item .gallery-actions {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.gallery-item .gallery-actions .el-button {
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  color: #8b4513;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 15px;
+  box-shadow: 0px 4px 8px rgba(255, 140, 66, 0.2);
+  transition: all 0.3s ease;
+}
+
+.gallery-item .gallery-actions .el-button:hover {
+  background: linear-gradient(135deg, #ffb347, #ff8c42);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0px 6px 12px rgba(255, 140, 66, 0.3);
+}
+
+.gallery-item .gallery-actions .el-button .el-icon {
+  margin-right: 5px;
+}
+
+.gallery-item .gallery-actions .el-button.download-button {
+  background: linear-gradient(135deg, #2e8b57, #32cd32);
+  color: #fff;
+}
+
+.gallery-item .gallery-actions .el-button.download-button:hover {
+  background: linear-gradient(135deg, #32cd32, #2e8b57);
+}
+
+.gallery-item .gallery-actions .el-button.download-button .el-icon {
+  color: #fff;
+}
+
+.gallery-item .gallery-actions .el-button.share-button {
+  background: linear-gradient(135deg, #8b4513, #ff8c42);
+  color: #fff;
+}
+
+.gallery-item .gallery-actions .el-button.share-button:hover {
+  background: linear-gradient(135deg, #ff8c42, #8b4513);
+}
+
+.gallery-item .gallery-actions .el-button.share-button .el-icon {
+  color: #fff;
+}
+
+.gallery-item .gallery-actions .el-button.disabled {
+  background: linear-gradient(135deg, #cccccc, #999999) !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+  border-color: #bbbbbb !important;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2) !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.gallery-item .gallery-actions .el-button.disabled::before {
+  display: none !important;
+}
+
+.gallery-item .gallery-actions .el-button.disabled:hover {
+  background: linear-gradient(135deg, #cccccc, #999999) !important;
+  transform: none !important;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2) !important;
+}
+
+.gallery-item .gallery-actions .el-button.disabled .el-icon {
+  color: #666666 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .gallery-item {
+    padding: 15px;
+  }
+
+  .gallery-item .gallery-image {
+    height: 150px;
+  }
+
+  .gallery-item .gallery-info {
+    font-size: 0.8rem;
+  }
+
+  .gallery-item .gallery-actions .el-button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+}
+
+/* 原生输入框卡通立体样式 */
+.cartoon-input {
+  border: 4px solid #f7a985;
+  border-radius: 20px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.cartoon-input:focus {
+  outline: none;
+  border-color: #ff8c42;
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.4),
+    0px 4px 8px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+}
+
+.cartoon-input::placeholder {
+  color: #8b4513;
+  opacity: 0.8;
+}
+
+/* 卡通按钮样式 */
+.cartoon-button {
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  color: #8b4513;
+  font-weight: 700;
+  border: none;
+  border-radius: 20px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.cartoon-button:hover {
+  background: linear-gradient(135deg, #ffb347, #ff8c42);
+  transform: translateY(-3px);
+  box-shadow: 
+    0px 12px 24px rgba(255, 99, 71, 0.4),
+    0px 6px 12px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+}
+
+.cartoon-button:active {
+  transform: translateY(0px);
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+}
+
+.cartoon-button.disabled {
+  background: linear-gradient(135deg, #cccccc, #999999) !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+  border-color: #bbbbbb !important;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2) !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.cartoon-button.disabled:hover {
+  background: linear-gradient(135deg, #cccccc, #999999) !important;
+  transform: none !important;
+  box-shadow: 
+    0px 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0px 1px 0px rgba(255, 255, 255, 0.2) !important;
+}
+
+.cartoon-button .el-icon {
+  margin-right: 5px;
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+
+/* 卡通标题样式 */
+.cartoon-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #8b4513;
+  margin-bottom: 15px;
+  text-shadow: 2px 2px 0px #ffd700;
+  letter-spacing: 1px;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow: 2px 2px 0px #ffd700;
+  }
+  50% {
+    text-shadow: 2px 2px 0px #ffd700, 0 0 15px rgba(255, 215, 0, 0.6);
+  }
+}
+
+/* 卡通副标题样式 */
+.cartoon-subtitle {
+  font-size: 1.3rem;
+  color: #4a2c17;
+  margin-bottom: 30px;
+  font-weight: 600;
+  text-shadow: 1px 1px 0px #fff8dc;
+  letter-spacing: 0.5px;
+}
+
+/* 卡通步骤样式 */
+.cartoon-steps {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cartoon-step-item {
+  background: rgba(255, 255, 255, 0.7);
+  border: 3px solid #f7a985;
+  border-radius: 15px;
+  padding: 15px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  box-shadow: 0px 4px 8px rgba(255, 140, 66, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.cartoon-step-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.cartoon-step-item:hover::before {
+  left: 100%;
+}
+
+.cartoon-step-item:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0px 6px 12px rgba(255, 140, 66, 0.3);
+}
+
+.cartoon-step-item.completed {
+  background: linear-gradient(135deg, rgba(46, 139, 87, 0.1), rgba(34, 139, 34, 0.1));
+  border-color: #32cd32;
+  box-shadow: 
+    0px 4px 8px rgba(46, 139, 87, 0.3),
+    0px 0px 15px rgba(46, 139, 87, 0.2);
+}
+
+.cartoon-step-icon {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.1));
+  animation: stepIconBounce 2s ease-in-out infinite;
+}
+
+@keyframes stepIconBounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.cartoon-step-text {
+  font-size: 0.9rem;
+  color: #8b4513;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+}
+
+.cartoon-step-item.completed .cartoon-step-icon {
+  color: #2e8b57;
+  animation: completedPulse 2s ease-in-out infinite;
+}
+
+.cartoon-step-item.completed .cartoon-step-text {
+  color: #2e8b57;
+}
+
+@keyframes completedPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .cartoon-steps {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .cartoon-step-item {
+    padding: 12px 8px;
+  }
+
+  .cartoon-step-icon {
+    font-size: 1.8rem;
+  }
+
+  .cartoon-step-text {
+    font-size: 0.8rem;
+  }
+}
+
+/* 原生消息提示容器 */
+.native-message-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.native-message {
+  background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
+  border: 4px solid #f7a985;
+  border-radius: 20px;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.4s cubic-bezier(.4, 2, .6, 1);
+  cursor: pointer;
+  pointer-events: auto;
+  font-family: 'CuteFont64', 'Comic Sans MS', cursive;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #8b4513;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+  opacity: 0;
+  transform: translateX(100%) scale(0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.native-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+}
+
+.native-message:hover::before {
+  left: 100%;
+}
+
+.native-message:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0px 12px 24px rgba(255, 99, 71, 0.4),
+    0px 6px 12px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+}
+
+.native-message--visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.native-message__icon {
+  font-size: 1.8rem;
+  margin-right: 15px;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.1));
+  animation: iconBounce 2s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.native-message.native-message--hidden {
+  opacity: 0;
+}
+
+.native-message__content {
+  flex-grow: 1;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.native-message__close {
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-left: 15px;
+  font-weight: 800;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  color: #8b4513;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  padding: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+}
+
+.native-message__close:hover {
+  opacity: 1;
+  background: rgba(255, 99, 71, 0.2);
+  transform: scale(1.1);
+}
+
+/* 不同类型的消息样式 */
+.native-message--success {
+  border-color: #90ee90;
+  background: linear-gradient(135deg, #f0fff0 0%, #e6ffe6 100%);
+  color: #2e8b57;
+}
+
+.native-message--success .native-message__icon {
+  color: #2e8b57;
+  animation: successPulse 2s ease-in-out infinite;
+}
+
+@keyframes successPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.native-message--error {
+  border-color: #ff6b6b;
+  background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+  color: #dc143c;
+}
+
+.native-message--error .native-message__icon {
+  color: #dc143c;
+  animation: errorShake 0.5s ease-in-out;
+}
+
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.native-message--warning {
+  border-color: #ffa500;
+  background: linear-gradient(135deg, #fffacd 0%, #fff8dc 100%);
+  color: #b8860b;
+}
+
+.native-message--warning .native-message__icon {
+  color: #ff8c00;
+  animation: warningFlash 1s ease-in-out infinite;
+}
+
+@keyframes warningFlash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.native-message--info {
+  border-color: #87ceeb;
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+  color: #4682b4;
+}
+
+.native-message--info .native-message__icon {
+  color: #4682b4;
+  animation: infoRotate 3s linear infinite;
+}
+
+@keyframes infoRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .native-message-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  .native-message {
+    padding: 12px 15px;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    border-width: 3px;
+  }
+
+  .native-message__icon {
+    font-size: 1.5rem;
+    margin-right: 10px;
+  }
+
+  .native-message__close {
+    font-size: 1rem;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-left: 10px;
+  }
 }
 </style>
