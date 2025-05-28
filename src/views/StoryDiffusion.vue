@@ -1987,19 +1987,11 @@ onUnmounted(() => {
 }
 
 .image-preview {
-  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.image-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 10px;
-  object-fit: cover;
 }
 
 .image-preview.small img {
@@ -2008,9 +2000,9 @@ onUnmounted(() => {
 
 .image-overlay {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  opacity: 0;
+  top: 5px;
+  right: 5px;
+  opacity: 1;
   transition: opacity 0.3s ease;
 }
 
@@ -2085,7 +2077,7 @@ onUnmounted(() => {
 .form-item label, .form-item-row label {
   
   color: #8b4513;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   text-shadow: 1px 1px 0px #ffd700;
   letter-spacing: 0.5px;
 }
@@ -2583,8 +2575,8 @@ onUnmounted(() => {
 /* 图片相关立体样式 */
 .image-preview img {
   max-width: 100%;
-  max-height: 100%;
-  border-radius: 15px;
+  max-height: 150%;
+  border-radius: 10px;
   object-fit: cover;
   border: 4px solid #f7a985;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
