@@ -10,9 +10,9 @@
           type="text" 
           placeholder="搜索姓名或风格..." 
           class="search-input"
-          @input="filterGallery"
+          @keyup.enter="performSearch"
         />
-        <div class="search-icon">🔍</div>
+        <div class="search-icon" @click="performSearch">🔍</div>
       </div>
     </div>
 
@@ -242,15 +242,23 @@ const isLoadingMore = ref(false)
 const hasMoreData = ref(true)
 
 // 从后端API加载故事数据
-const loadStoriesFromAPI = async (page = 1, search = '') => {
+const loadStoriesFromAPI = async (page = 1, search = '', isGlobalSearch = false) => {
   try {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      per_page: itemsPerPage.toString()
-    })
+    const params = new URLSearchParams()
     
     if (search.trim()) {
       params.append('search', search.trim())
+      // 如果是全局搜索，获取所有匹配结果
+      if (isGlobalSearch) {
+        params.append('per_page', '1000') // 设置一个大数值获取所有结果
+        params.append('page', '1')
+      } else {
+        params.append('page', page.toString())
+        params.append('per_page', itemsPerPage.toString())
+      }
+    } else {
+      params.append('page', page.toString())
+      params.append('per_page', itemsPerPage.toString())
     }
     
     const response = await fetch(`${API_BASE_URL}/stories?${params}`)
@@ -316,15 +324,54 @@ const loadMoreStories = async () => {
   }
 }
 
-// 搜索过滤功能 - 全局搜索（从后端获取）
-const filterGallery = async () => {
-  // 重新从API搜索
-  await loadInitialStories()
+// 执行搜索 - 点击搜索图标或按回车键时触发
+const performSearch = async () => {
+  console.log('开始搜索:', searchQuery.value)
+  
+  // 如果搜索关键词为空，加载所有数据
+  if (!searchQuery.value.trim()) {
+    await loadInitialStories()
+    return
+  }
+  
+  isLoading.value = true
+  
+  try {
+    // 执行全局搜索，获取所有匹配结果
+    const data = await loadStoriesFromAPI(1, searchQuery.value, true)
+    
+    // 重置所有状态
+    allStories.value = data.stories || []
+    displayedStories.value = [...allStories.value]
+    currentPage.value = 1
+    
+    // 搜索结果不需要懒加载，因为已经获取了所有匹配结果
+    hasMoreData.value = false
+    
+    console.log(`搜索到 ${allStories.value.length} 个匹配的故事`)
+    
+    if (allStories.value.length > 0) {
+      NativeMessage.success(`找到 ${allStories.value.length} 个相关故事！`, 3000)
+    } else {
+      NativeMessage.info('没有找到相关内容，试试其他关键词吧！', 3000)
+    }
+    
+  } catch (error) {
+    console.error('搜索失败:', error)
+    NativeMessage.error('搜索失败，请重试', 3000)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // 刷新画廊数据 - 供外部调用
 const refreshGallery = async () => {
   console.log('刷新画廊数据...')
+  // 清空搜索关键词
+  searchQuery.value = ''
+  // 重置懒加载状态
+  currentPage.value = 1
+  hasMoreData.value = true
   await loadInitialStories()
   NativeMessage.success('画廊数据已更新！', 3000)
 }
@@ -594,7 +641,7 @@ onUnmounted(() => {
   background: #fff8dc;
   color: #8b4513;
   font-size: 1.1rem;
-  font-weight: 700;
+  
   outline: none;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
@@ -609,7 +656,7 @@ onUnmounted(() => {
 
 .search-input::placeholder {
   color: #cd853f;
-  font-weight: 600;
+  
 }
 
 .search-icon {
@@ -619,7 +666,28 @@ onUnmounted(() => {
   transform: translateY(-50%);
   font-size: 1.2rem;
   color: #ff8c42;
-  pointer-events: none;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  background: rgba(255, 140, 66, 0.1);
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  min-height: 32px;
+}
+
+.search-icon:hover {
+  background: rgba(255, 140, 66, 0.2);
+  border-color: #ff8c42;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
+}
+
+.search-icon:active {
+  transform: translateY(-50%) scale(0.95);
+  background: rgba(255, 140, 66, 0.3);
 }
 
 .loading-container {
@@ -710,7 +778,7 @@ onUnmounted(() => {
 .set-date {
   color: #cd853f;
   font-size: 1rem;
-  font-weight: 700;
+  
 }
 
 .set-style {
@@ -801,12 +869,11 @@ onUnmounted(() => {
 .empty-state p {
   font-size: 1.2rem;
   margin: 0;
-  font-weight: 700;
+  
   text-shadow: 1px 1px 0px #ffd700;
   letter-spacing: 0.5px;
 }
 
-/* ========== 自定义精致图片预览弹出框样式 ========== */
 
 .custom-preview-overlay {
   position: fixed;
@@ -1518,11 +1585,11 @@ onUnmounted(() => {
 
 /* Element Plus 组件字体统一覆盖 */
 :deep(.el-skeleton) {
-  font-weight: 700;
+  
 }
 
 :deep(.el-dialog) {
-  font-weight: 700;
+  
 }
 
 :deep(.el-dialog__title) {
@@ -1546,7 +1613,7 @@ onUnmounted(() => {
 .loading-more p {
   font-size: 1.2rem;
   margin-top: 15px;
-  font-weight: 700;
+  
   text-shadow: 1px 1px 0px #ffd700;
   letter-spacing: 0.5px;
   animation: loadingPulse 2s ease-in-out infinite;
@@ -1572,7 +1639,7 @@ onUnmounted(() => {
 .no-more-data p {
   color: #8b4513;
   font-size: 1.3rem;
-  font-weight: 700;
+  
   text-shadow: 1px 1px 0px #ffd700;
   letter-spacing: 1px;
   margin: 0;
@@ -1617,7 +1684,7 @@ onUnmounted(() => {
   cursor: pointer;
   pointer-events: auto;
   font-family: 'CuteFont64', 'Comic Sans MS', cursive;
-  font-weight: 700;
+  
   font-size: 1rem;
   color: #8b4513;
   text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);

@@ -228,25 +228,8 @@
             <el-icon>
               <MagicStick />
             </el-icon>
-            {{ isGenerating ? '正在生成中...' : '🎨 生成故事图片' }}
+            {{ isGenerating ? '正在生成中...' : '生成故事图片' }}
           </el-button>
-          <!-- <div v-if="!selfieImage || descriptionImages.filter(item => item.image).length !== 8 || userInfo.descriptions.filter(desc => desc.trim()).length !== 8" class="generate-hint">
-            <p>✨ 完成以下步骤后即可生成：</p>
-            <ul>
-              <li :class="{ completed: selfieImage }">
-                <span class="check-icon">{{ selfieImage ? '✅' : '📷' }}</span>
-                上传自拍照
-              </li>
-              <li :class="{ completed: descriptionImages.filter(item => item.image).length === 8 }">
-                <span class="check-icon">{{ descriptionImages.filter(item => item.image).length === 8 ? '✅' : '🖼️' }}</span>
-                上传8张参考图片 ({{ descriptionImages.filter(item => item.image).length }}/8)
-              </li>
-              <li :class="{ completed: userInfo.descriptions.filter(desc => desc.trim()).length === 8 }">
-                <span class="check-icon">{{ userInfo.descriptions.filter(desc => desc.trim()).length === 8 ? '✅' : '✍️' }}</span>
-                填写所有图片描述 ({{ userInfo.descriptions.filter(desc => desc.trim()).length }}/8)
-              </li>
-            </ul>
-          </div> -->
         </div>
       </div>
 
@@ -435,7 +418,7 @@ const translateToEnglish = async (chineseText) => {
     console.warn('主要翻译服务失败，尝试备用方案:', error)
     
     try {
-      // 备用翻译服务: LibreTranslate (如果有的话)
+      // 备用翻译服务: LibreTranslate 
       const fallbackResponse = await fetch('https://libretranslate.de/translate', {
         method: 'POST',
         headers: {
@@ -459,34 +442,6 @@ const translateToEnglish = async (chineseText) => {
       }
     } catch (fallbackError) {
       console.warn('备用翻译服务也失败:', fallbackError)
-    }
-    
-    // 所有翻译服务都失败时，使用简单的关键词映射作为最后方案
-    const keywordTranslations = {
-      '男孩': 'boy',
-      '女孩': 'girl', 
-      '快乐': 'happy',
-      '悲伤': 'sad',
-      '美丽': 'beautiful',
-      '可爱': 'cute',
-      '帅气': 'handsome',
-      '笑容': 'smile',
-      '公园': 'park',
-      '学校': 'school',
-      '家': 'home',
-      '朋友': 'friend',
-      '游戏': 'game',
-      '阅读': 'reading',
-      '运动': 'sports',
-      '音乐': 'music',
-      '画画': 'drawing',
-      '唱歌': 'singing',
-      '跳舞': 'dancing'
-    }
-    
-    let result = chineseText
-    for (const [chinese, english] of Object.entries(keywordTranslations)) {
-      result = result.replace(new RegExp(chinese, 'g'), english)
     }
     
     console.warn('使用关键词映射翻译，可能不够准确')
@@ -913,20 +868,6 @@ const shareAllImages = async () => {
     
     NativeMessage.success(`${userInfo.name}的故事已成功分享到画廊！现在所有用户都能看到你的作品了 🎉`)
     
-    // // 如果支持原生分享，也执行原生分享
-    // if (navigator.share) {
-    //   try {
-    //     await navigator.share({
-    //       title: `${userInfo.name}的AI故事集`,
-    //       text: `我用AI创作了一个包含${validImages.length}张图片的故事！快来画廊看看吧！`,
-    //       url: window.location.href
-    //     })
-    //   } catch (shareError) {
-    //     // 原生分享失败不影响主要功能
-    //     console.log('原生分享取消或失败:', shareError)
-    //   }
-    // }
-    
   } catch (error) {
     console.error('分享到画廊失败:', error)
     NativeMessage.error(`分享失败: ${error.message}`)
@@ -1173,9 +1114,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* ========== 动态背景动画样式 ========== */
-
-/* 波浪动画 - 覆盖整个屏幕下方1/3 */
 .waves {
   position: absolute;
   bottom: 0;
@@ -1429,7 +1367,6 @@ onUnmounted(() => {
   font-weight: inherit;
 }
 
-/* ========== 头部标题重新设计 ========== */
 .header {
   text-align: center;
   margin-bottom: 10px;
@@ -1630,7 +1567,7 @@ onUnmounted(() => {
 .subtitle {
   font-size: 1.5rem;
   margin: 0;
-  font-weight: 600;
+  
   font-family: 'CuteFont64', cursive;
   position: relative;
   display: flex;
@@ -1642,7 +1579,7 @@ onUnmounted(() => {
 
 .subtitle-highlight {
   color: #8b0000;
-  font-weight: 700;
+  
   text-shadow:
     2px 2px 0px #ffd700,
     4px 4px 0px #fff8dc,
@@ -1742,7 +1679,6 @@ onUnmounted(() => {
   animation-delay: -16.66s;
 }
 
-/* ========== 动画定义 ========== */
 @keyframes decorationFloat {
 
   0%,
@@ -1987,7 +1923,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 700;
+  
   text-shadow: 1px 1px 0px #ffd700;
   letter-spacing: 0.5px;
 }
@@ -2024,7 +1960,7 @@ onUnmounted(() => {
   justify-content: center;
   height: 100%;
   color: #8b4513;
-  font-weight: 700;
+  
   text-align: center;
 }
 
@@ -2039,14 +1975,14 @@ onUnmounted(() => {
 .upload-text {
   font-size: 1.2rem;
   text-shadow: 1px 1px 0px #ffd700;
-  font-weight: 700;
+  
   text-align: center;
 }
 
 .upload-hint {
   font-size: 1rem;
   color: #cd853f;
-  font-weight: 600;
+  
   text-align: center;
 }
 
@@ -2147,7 +2083,7 @@ onUnmounted(() => {
 }
 
 .form-item label, .form-item-row label {
-  font-weight: 700;
+  
   color: #8b4513;
   font-size: 1.3rem;
   text-shadow: 1px 1px 0px #ffd700;
@@ -2330,7 +2266,7 @@ onUnmounted(() => {
   justify-content: center;
   height: 100%;
   color: #8b4513;
-  font-weight: 700;
+  
 }
 
 .placeholder-icon {
@@ -2344,7 +2280,7 @@ onUnmounted(() => {
   font-size: 1.1rem;
   text-align: center;
   text-shadow: 1px 1px 0px #ffd700;
-  font-weight: 700;
+  
 }
 
 .preview-image {
@@ -2593,10 +2529,9 @@ onUnmounted(() => {
   border-radius: 20px;
   background: #fffacd;
   color: #8b4513;
-  font-weight: 700;
   box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
   padding: 0.8em 1em;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   width: 100%;
   transition: all 0.2s ease;
   letter-spacing: 0.5px;
@@ -2611,7 +2546,6 @@ onUnmounted(() => {
 
 .cartoon-input::placeholder {
   color: #cd853f;
-  font-weight: 600;
 }
 
 /* Element Plus 组件字体统一覆盖 */
@@ -2620,7 +2554,7 @@ onUnmounted(() => {
   color: #8b4513;
   border: 4px solid #f7a985;
   border-radius: 20px;
-  font-weight: 700;
+  
   font-size: 1.1rem;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
   margin: 0 5px;
@@ -2640,7 +2574,7 @@ onUnmounted(() => {
   border-radius: 20px;
   background: #fffacd;
   color: #8b4513;
-  font-weight: 700;
+  
   font-size: 1.1rem;
 }
 
@@ -2699,7 +2633,7 @@ onUnmounted(() => {
 
 .image-actions .el-button {
   font-size: 0.8rem;
-  font-weight: 700;
+  
   color: #ffaf02;
   background-color: #ffffe3;
   padding: 0.3em 0.6em;
@@ -2725,7 +2659,7 @@ onUnmounted(() => {
 /* 删除按钮样式 */
 .image-overlay .el-button {
   font-size: 0.8rem;
-  font-weight: 700;
+  
   color: #fff;
   background-color: #ff6347;
   padding: 0.3em 0.6em;
@@ -2852,7 +2786,7 @@ onUnmounted(() => {
   border-radius: 20px;
   background: #fffacd;
   color: #8b4513;
-  font-weight: 700;
+  
   box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
   padding: 0.8em 1em;
   font-size: 1.1rem;
@@ -2892,7 +2826,7 @@ onUnmounted(() => {
 .cartoon-select option {
   background: #fff8dc;
   color: #8b4513;
-  font-weight: 700;
+  
   font-size: 1.4rem;
   padding: 16px 20px;
   line-height: 1.8;
@@ -2999,7 +2933,7 @@ onUnmounted(() => {
   border-radius: 20px;
   background: #fffacd;
   color: #8b4513;
-  font-weight: 700;
+  
   box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
   padding: 0.8em 1em;
   font-size: 1.1rem;
@@ -3068,7 +3002,7 @@ onUnmounted(() => {
 .select-option {
   background: #fff8dc;
   color: #8b4513;
-  font-weight: 700;
+  
   font-size: 1.4rem;
   padding: 16px 20px;
   line-height: 1.8;
@@ -3246,19 +3180,18 @@ onUnmounted(() => {
   border-radius: 0 15px 15px 0;
   background: #fff8dc;
   color: #8b4513;
-  font-weight: 700;
   font-size: 1rem;
   box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 0.8em 1em;
+  padding: 0.2em 0.2em;
   width: 100%;
   transition: all 0.2s ease;
   letter-spacing: 0.5px;
   line-height: 1.5;
   resize: none;
   min-height: 3.2em;
-  max-height: 6em; /* 限制最大高度，超出时显示滚动条 */
+  max-height: 6em; 
   height: auto;
-  overflow-y: auto; /* 允许垂直滚动 */
+  overflow-y: auto;
 }
 
 .cartoon-textarea:focus {
@@ -3270,7 +3203,7 @@ onUnmounted(() => {
 
 .cartoon-textarea::placeholder {
   color: #cd853f;
-  font-weight: 600;
+  
 }
 
 /* 自定义滚动条样式 - 卡通风格 */
@@ -3335,7 +3268,7 @@ onUnmounted(() => {
 
 .generate-hint p {
   margin: 0 0 10px 0;
-  font-weight: 700;
+  
   color: #8b4513;
   text-align: center;
 }
@@ -3352,13 +3285,13 @@ onUnmounted(() => {
   gap: 8px;
   padding: 5px 0;
   color: #8b4513;
-  font-weight: 600;
+  
   transition: all 0.3s ease;
 }
 
 .generate-hint li.completed {
   color: #2e8b57;
-  font-weight: 700;
+  
 }
 
 .generate-hint .check-icon {
@@ -3383,27 +3316,27 @@ onUnmounted(() => {
 
 /* Element Plus 全局字体覆盖 */
 :deep(.el-button) {
-  font-weight: 700;
+  
   letter-spacing: 0.5px;
 }
 
 :deep(.el-input__inner) {
-  font-weight: 700;
+  
   letter-spacing: 0.5px;
 }
 
 :deep(.el-textarea__inner) {
-  font-weight: 700;
+  
   line-height: 1.5;
 }
 
 :deep(.el-radio-button__inner) {
-  font-weight: 700;
+  
   letter-spacing: 0.5px;
 }
 
 :deep(.el-upload-dragger .el-upload__text) {
-  font-weight: 700;
+  
   font-size: 1.1rem;
   color: #8b4513;
 }
@@ -3531,7 +3464,7 @@ onUnmounted(() => {
 .gallery-item .gallery-info {
   font-size: 0.9rem;
   color: #8b4513;
-  font-weight: 700;
+  
   text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
   letter-spacing: 0.3px;
   line-height: 1.3;
@@ -3547,7 +3480,7 @@ onUnmounted(() => {
 .gallery-item .gallery-actions .el-button {
   background: linear-gradient(135deg, #ffd700, #ffb347);
   color: #8b4513;
-  font-weight: 700;
+  
   border: none;
   border-radius: 10px;
   padding: 8px 15px;
@@ -3653,7 +3586,7 @@ onUnmounted(() => {
   border-radius: 20px;
   padding: 10px 15px;
   font-size: 1rem;
-  font-weight: 700;
+  
   letter-spacing: 0.5px;
   background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
   box-shadow: 
@@ -3681,7 +3614,7 @@ onUnmounted(() => {
 .cartoon-button {
   background: linear-gradient(135deg, #ffd700, #ffb347);
   color: #8b4513;
-  font-weight: 700;
+  
   border: none;
   border-radius: 20px;
   padding: 12px 20px;
@@ -3764,7 +3697,7 @@ onUnmounted(() => {
   font-size: 1.3rem;
   color: #4a2c17;
   margin-bottom: 30px;
-  font-weight: 600;
+  
   text-shadow: 1px 1px 0px #fff8dc;
   letter-spacing: 0.5px;
 }
@@ -3840,7 +3773,7 @@ onUnmounted(() => {
 .cartoon-step-text {
   font-size: 0.9rem;
   color: #8b4513;
-  font-weight: 700;
+  
   text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
   letter-spacing: 0.3px;
   line-height: 1.3;
@@ -3911,7 +3844,7 @@ onUnmounted(() => {
   cursor: pointer;
   pointer-events: auto;
   font-family: 'CuteFont64', 'Comic Sans MS', cursive;
-  font-weight: 700;
+  
   font-size: 1rem;
   color: #8b4513;
   text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
