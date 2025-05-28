@@ -1,7 +1,7 @@
 <template>
   <div class="gallery">
     <div class="gallery-header">
-      <h2>🎭 画廊</h2>
+      <h2>🖼️ 画廊</h2>
       <p>欣赏小朋友们创作的精彩故事图片！</p>
       <!-- 搜索框 -->
       <div class="search-box">
