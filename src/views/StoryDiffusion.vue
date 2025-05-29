@@ -377,7 +377,7 @@ const styleOptions = [
 ]
 
 // 后端API基础URL
-const API_BASE_URL = 'http://192.168.1.103:5000'
+const API_BASE_URL = 'https://www.ai-study-nku.com/api'
 
 // 当前会话ID
 const sessionId = ref('')
