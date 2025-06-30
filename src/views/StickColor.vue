@@ -105,9 +105,6 @@
                                      <span>橡皮</span>
                                  </div>
                                  <div class="tool-btn clear-btn" @click="clearCanvas" title="清空画布">
-                                     <el-icon>
-                                         <Refresh />
-                                     </el-icon>
                                      <span>清空</span>
                                  </div>
                              </div>
@@ -1546,6 +1543,55 @@ onUnmounted(() => {
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
     user-select: none;
     margin-left: 10px;
+}
+
+.tool-btn:hover {
+    background: linear-gradient(135deg, #ffb347, #ffd700);
+    transform: translateY(-1px);
+    box-shadow: 0px 3px 6px rgba(255, 140, 66, 0.3);
+    border-color: #ff8c42;
+}
+
+.tool-btn:active {
+    transform: translateY(0);
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tool-btn.active {
+    background: linear-gradient(135deg, #ff8c42, #ff6347);
+    color: #fff;
+    border-color: #ff6347;
+    text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
+    box-shadow: 0px 4px 8px rgba(255, 99, 71, 0.3);
+}
+
+.tool-btn.clear-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff6b6b, #ff4757);
+  color: #fff;
+  border-color: #ff3742;
+  position: relative;
+}
+
+.tool-btn.clear-btn .el-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  position: static;
+  width: 100%;
+  height: 1.5em;
+}
+
+.tool-btn.clear-btn span {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin: 0;
+  padding: 0;
 }
 
 .tool-btn:hover {
