@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HomePage from '../views/HomePage.vue'
 import StoryDiffusion from '../views/StoryDiffusion.vue'
 import AiStory from '../views/AiStory.vue'
 import StickColor from '../views/StickColor.vue'
@@ -8,6 +9,11 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'HomePage',
+      component: HomePage,
+    },
+    {
+      path: '/story-diffusion',
       name: 'StoryDiffusion',
       component: StoryDiffusion,
     },
