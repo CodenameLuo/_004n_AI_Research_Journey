@@ -87,49 +87,39 @@
                     <h2>🖌️ 绘画区域</h2>
                 </div>
 
-                                         <!-- 绘画工具栏 -->
-                         <div class="drawing-toolbar">
-                             <div class="tool-group">
-                                 <div class="tool-btn" :class="{ 'active': currentTool === 'pen' }" @click="selectTool('pen')"
-                                     title="画笔">
-                                     <el-icon>
-                                         <EditPen />
-                                     </el-icon>
-                                     <span>画笔</span>
-                                 </div>
-                                 <div class="tool-btn" :class="{ 'active': currentTool === 'eraser' }"
-                                     @click="selectTool('eraser')" title="橡皮擦">
-                                     <el-icon>
-                                         <Delete />
-                                     </el-icon>
-                                     <span>橡皮</span>
-                                 </div>
-                                 <div class="tool-btn clear-btn" @click="clearCanvas" title="清空画布">
-                                     <span>清空</span>
-                                 </div>
-                             </div>
-                             
-                             <!-- 橡皮擦大小调节滑块 -->
-                             <div class="eraser-settings" v-if="currentTool === 'eraser'">
-                                 <div class="eraser-size-control">
-                                     <label>橡皮擦大小</label>
-                                     <input 
-                                         type="range" 
-                                         min="5" 
-                                         max="30" 
-                                         v-model="eraserSize" 
-                                         class="eraser-slider"
-                                     />
-                                     <span class="size-display">{{ eraserSize }}px</span>
-                                 </div>
-                             </div>
-                         </div>
+                <!-- 绘画工具栏 -->
+                <div class="drawing-toolbar">
+                    <div class="tool-group">
+                        <div class="tool-btn" :class="{ 'active': currentTool === 'pen' }" @click="selectTool('pen')" title="画笔">
+                            <el-icon>
+                                <EditPen />
+                            </el-icon>
+                            <span>画笔</span>
+                        </div>
+                        <div class="tool-btn" :class="{ 'active': currentTool === 'eraser' }" @click="selectTool('eraser')" title="橡皮擦">
+                            <el-icon>
+                                <Delete />
+                            </el-icon>
+                            <span>橡皮</span>
+                        </div>
+                        <div class="tool-btn clear-btn" @click="clearCanvas" title="清空画布">
+                            <span>清空</span>
+                        </div>
+                    </div>
+
+                    <!-- 橡皮擦大小调节滑块 -->
+                    <div class="eraser-settings" v-if="currentTool === 'eraser'">
+                        <div class="eraser-size-control">
+                            <label>橡皮擦大小</label>
+                            <input type="range" min="5" max="30" v-model="eraserSize" class="eraser-slider" />
+                            <span class="size-display">{{ eraserSize }}px</span>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- 绘画画布 -->
                 <div class="canvas-container">
-                    <canvas ref="canvas" class="drawing-canvas" @mousedown="startDrawing" @mousemove="draw"
-                        @mouseup="stopDrawing" @mouseleave="stopDrawing" @touchstart.passive="handleTouchStart"
-                        @touchmove.passive="handleTouchMove" @touchend.passive="handleTouchEnd"></canvas>
+                    <canvas ref="canvas" class="drawing-canvas" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing" @touchstart.passive="handleTouchStart" @touchmove.passive="handleTouchMove" @touchend.passive="handleTouchEnd"></canvas>
 
                     <!-- 画布提示 -->
                     <div class="canvas-hint" v-if="!hasDrawing">
@@ -146,10 +136,7 @@
                     <div class="prompt-header">
                         <label>描述提示词</label>
                         <div class="prompt-controls">
-                            <div class="voice-input-btn" :class="{ 'recording': isRecording }"
-                                @mousedown="startRecording" @mouseup="stopRecording" @mouseleave="stopRecording"
-                                @touchstart.passive="startRecording" @touchend.passive="stopRecording"
-                                @touchcancel.passive="stopRecording" :title="isRecording ? '录音中...' : '按住说话'">
+                            <div class="voice-input-btn" :class="{ 'recording': isRecording }" @mousedown="startRecording" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording ? '录音中...' : '按住说话'">
                                 <el-icon v-if="!isRecording">
                                     <Microphone />
                                 </el-icon>
@@ -160,8 +147,7 @@
                                     </el-icon>
                                 </div>
                             </div>
-                            <el-button type="warning" size="small" @click="clearPrompt" :disabled="!prompt.trim()"
-                                class="clear-btn">
+                            <el-button type="warning" size="small" @click="clearPrompt" :disabled="!prompt.trim()" class="clear-btn">
                                 <el-icon>
                                     <Delete />
                                 </el-icon>
@@ -170,14 +156,14 @@
                         </div>
                     </div>
 
-                    <textarea v-model="prompt" placeholder="描述你想要生成的图片风格和内容，比如：水彩画风格、卡通风格、写实风格等..."
-                        class="prompt-textarea" rows="4" @input="handlePromptInput"></textarea>
+                    <textarea v-model="prompt" placeholder="描述你想要生成的图片风格和内容，比如：水彩画风格、卡通风格、写实风格等..." class="prompt-textarea" rows="4" @input="handlePromptInput"></textarea>
                 </div>
+
+
 
                 <!-- 生成按钮 -->
                 <div class="generate-btn-wrapper">
-                    <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating"
-                        :disabled="!hasDrawing" class="generate-btn">
+                    <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing" class="generate-btn">
                         <el-icon>
                             <MagicStick />
                         </el-icon>
@@ -244,6 +230,12 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { EditPen, Delete, Refresh, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
+
+// API 配置
+const API_CONFIG = {
+    BASE_URL: 'http://localhost:7860',
+    MODEL_NAME: 'dreamshaper_8' // 可以根据实际情况修改
+}
 
 // 画布相关
 const canvas = ref(null)
@@ -324,6 +316,62 @@ const closeMessage = (id) => {
     }
 }
 
+// 检测文本是否包含中文
+const containsChinese = (text) => {
+    return /[\u4e00-\u9fa5]/.test(text)
+}
+
+// 翻译中文到英文（使用API）
+const translateToEnglish = async (chineseText) => {
+    if (!chineseText || !containsChinese(chineseText)) {
+        return chineseText
+    }
+
+    try {
+        // 使用Google Translate API（免费版本）
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
+        
+        if (!response.ok) {
+            throw new Error(`翻译API请求失败: ${response.status}`)
+        }
+        
+        const result = await response.json()
+        
+        if (result && result[0] && result[0][0] && result[0][0][0]) {
+            return result[0][0][0]
+        }
+        
+        // 如果API返回格式不正确，返回原文
+        return chineseText
+
+    } catch (error) {
+        console.error('翻译失败:', error)
+        // 翻译失败时返回原文
+        return chineseText
+    }
+}
+
+// 智能翻译提示词（始终执行翻译）
+const smartTranslatePrompt = async (originalPrompt) => {
+    if (!originalPrompt) {
+        return originalPrompt
+    }
+
+    try {
+        const translatedPrompt = await translateToEnglish(originalPrompt.trim())
+
+        // 只在控制台记录翻译结果，不显示UI提示
+        if (translatedPrompt !== originalPrompt.trim() && containsChinese(originalPrompt)) {
+            console.log('提示词翻译:', originalPrompt, '->', translatedPrompt)
+        }
+
+        return translatedPrompt
+    } catch (error) {
+        console.error('智能翻译失败:', error)
+        return originalPrompt
+    }
+}
+
 // 初始化画布
 const initCanvas = () => {
     nextTick(() => {
@@ -336,11 +384,11 @@ const initCanvas = () => {
         canvas.value.width = container.clientWidth
         canvas.value.height = container.clientHeight
 
-            // 设置画布样式
-    ctx.value.lineCap = 'round'
-    ctx.value.lineJoin = 'round'
-    ctx.value.strokeStyle = '#333'
-    ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
+        // 设置画布样式
+        ctx.value.lineCap = 'round'
+        ctx.value.lineJoin = 'round'
+        ctx.value.strokeStyle = '#333'
+        ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
 
         // 设置白色背景
         ctx.value.fillStyle = '#ffffff'
@@ -350,15 +398,15 @@ const initCanvas = () => {
 
 // 工具选择
 const selectTool = (tool) => {
-  currentTool.value = tool
-  if (tool === 'pen') {
-    ctx.value.globalCompositeOperation = 'source-over'
-    ctx.value.strokeStyle = '#333'
-    ctx.value.lineWidth = 3
-  } else if (tool === 'eraser') {
-    ctx.value.globalCompositeOperation = 'destination-out'
-    ctx.value.lineWidth = eraserSize.value
-  }
+    currentTool.value = tool
+    if (tool === 'pen') {
+        ctx.value.globalCompositeOperation = 'source-over'
+        ctx.value.strokeStyle = '#333'
+        ctx.value.lineWidth = 3
+    } else if (tool === 'eraser') {
+        ctx.value.globalCompositeOperation = 'destination-out'
+        ctx.value.lineWidth = eraserSize.value
+    }
 }
 
 // 清空画布
@@ -397,12 +445,12 @@ const startDrawing = (e) => {
     e.preventDefault()
     isDrawing.value = true
 
-      const pos = getMousePos(e)
-  lastX.value = pos.x
-  lastY.value = pos.y
-  
-  ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
-  ctx.value.beginPath()
+    const pos = getMousePos(e)
+    lastX.value = pos.x
+    lastY.value = pos.y
+
+    ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
+    ctx.value.beginPath()
     ctx.value.moveTo(pos.x, pos.y)
 }
 
@@ -435,12 +483,12 @@ const handleTouchStart = (e) => {
     e.preventDefault()
     if (e.touches.length === 1) {
         isDrawing.value = true
-            const pos = getTouchPos(e)
-    lastX.value = pos.x
-    lastY.value = pos.y
-    
-    ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
-    ctx.value.beginPath()
+        const pos = getTouchPos(e)
+        lastX.value = pos.x
+        lastY.value = pos.y
+
+        ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
+        ctx.value.beginPath()
         ctx.value.moveTo(pos.x, pos.y)
     }
 }
@@ -480,7 +528,31 @@ const handlePromptInput = (event) => {
     // 保留事件处理器以备将来使用
 }
 
-// 生成图片（模拟）
+// 检查可用的 ControlNet 模型
+const getAvailableControlNetModel = async () => {
+    try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/controlnet/model_list`)
+        const models = await response.json()
+        
+        // 优先选择 scribble 相关模型
+        const scribbleModels = models.model_list.filter(model => 
+            model.includes('scribble') || model.includes('sketch')
+        )
+        
+        if (scribbleModels.length > 0) {
+            console.log('找到ControlNet模型:', scribbleModels[0])
+            return scribbleModels[0]
+        }
+        
+        // 如果没有找到，返回默认模型
+        return "control_v11p_sd15_scribble [d4ba51ff]"
+    } catch (error) {
+        console.warn('获取ControlNet模型列表失败:', error)
+        return "control_v11p_sd15_scribble [d4ba51ff]"
+    }
+}
+
+// 生成图片（调用 Stable Diffusion WebUI API）
 const generateImage = async () => {
     if (!hasDrawing.value) {
         NativeMessage.warning('请先绘制简笔画！')
@@ -492,17 +564,126 @@ const generateImage = async () => {
     try {
         NativeMessage.info('正在生成精美图片，请稍候...')
 
-        // 模拟生成过程
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        // 获取画布图像数据
+        const imgData = canvas.value.toDataURL("image/png")
 
-        // 模拟生成结果 - 使用示例图片
-        generatedImage.value = 'https://picsum.photos/400/600?random=' + Date.now()
+        // 构建提示词，如果没有输入则使用默认值
+        const originalPrompt = prompt.value.trim() || 'a beautiful artwork, high quality, detailed, colorful'
 
-        NativeMessage.success('图片生成成功！')
+        // 智能翻译中文提示词为英文
+        const userPrompt = await smartTranslatePrompt(originalPrompt)
+
+        // 负面提示词
+        const negativePrompt = "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
+
+        // 第一步：设置模型（可选）
+        try {
+            await fetch(`${API_CONFIG.BASE_URL}/sdapi/v1/options`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sd_model_checkpoint: API_CONFIG.MODEL_NAME })
+            })
+        } catch (modelError) {
+            console.warn('设置模型失败，继续使用当前模型:', modelError)
+        }
+
+        // 获取可用的 ControlNet 模型
+        const controlNetModel = await getAvailableControlNetModel()
+
+        // 第二步：构建 img2img 请求参数
+        const payload = {
+            init_images: [imgData],
+            prompt: userPrompt,
+            negative_prompt: negativePrompt,
+            steps: 30,
+            cfg_scale: 7.5,
+            width: 512,
+            height: 512,
+            sampler_index: "DPM++ 2M Karras",
+            denoising_strength: 0.75, // 降低去噪强度，更好地保持草图结构
+            controlnet_units: [{
+                input_image: imgData,
+                module: "scribble_hed",
+                model: controlNetModel,
+                weight: 1.2, // 增加ControlNet影响权重
+                guidance_start: 0.0,
+                guidance_end: 1.0,
+                processor_res: 512,
+                threshold_a: 64,
+                threshold_b: 64,
+                resize_mode: "Crop and Resize",
+                control_mode: "Balanced", // 平衡模式，更好地结合提示词和控制图
+                pixel_perfect: true,
+                enabled: true
+            }]
+        }
+
+        // 第三步：调用 img2img API
+        let response
+        let result
+        
+        try {
+            // 首先尝试使用 ControlNet
+            response = await fetch(`${API_CONFIG.BASE_URL}/sdapi/v1/img2img`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+
+            if (!response.ok) {
+                throw new Error(`ControlNet请求失败: ${response.status}`)
+            }
+
+            result = await response.json()
+            console.log('ControlNet生成成功，草图结构已被保留')
+            
+        } catch (controlNetError) {
+            console.warn('ControlNet失败，尝试备用方案:', controlNetError)
+            
+            // 备用方案：不使用 ControlNet，但降低去噪强度以保留更多原图特征
+            const backupPayload = {
+                ...payload,
+                denoising_strength: 0.25, // 进一步降低去噪强度
+                controlnet_units: [] // 移除 ControlNet
+            }
+            
+            response = await fetch(`${API_CONFIG.BASE_URL}/sdapi/v1/img2img`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(backupPayload)
+            })
+
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status} ${response.statusText}`)
+            }
+
+            result = await response.json()
+            NativeMessage.info('使用备用模式生成（未使用ControlNet）')
+        }
+
+        if (!result.images || result.images.length === 0) {
+            throw new Error('API返回结果为空')
+        }
+
+        // 设置生成的图片
+        generatedImage.value = "data:image/png;base64," + result.images[0]
+
+        NativeMessage.success('图片生成成功！手绘草图的结构已被保留')
 
     } catch (error) {
         console.error('生成错误:', error)
-        NativeMessage.error('图片生成失败，请重试！')
+
+        // 根据错误类型显示不同的提示信息
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+            NativeMessage.error('无法连接到后端服务，请确保 Stable Diffusion WebUI 已启动并开启API功能（使用 --api 参数）')
+        } else if (error.message.includes('404')) {
+            NativeMessage.error('API接口不存在，请确保后端服务支持 img2img API')
+        } else if (error.message.includes('500')) {
+            NativeMessage.error('后端服务内部错误，请检查模型是否正确加载')
+        } else {
+            NativeMessage.error('图片生成失败：' + (error.message || '未知错误'))
+        }
+
         generatedImage.value = null
     } finally {
         isGenerating.value = false
@@ -741,11 +922,11 @@ const handleResize = () => {
         canvas.value.width = container.clientWidth
         canvas.value.height = container.clientHeight
 
-            // 恢复画布设置
-    ctx.value.lineCap = 'round'
-    ctx.value.lineJoin = 'round'
-    ctx.value.strokeStyle = '#333'
-    ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
+        // 恢复画布设置
+        ctx.value.lineCap = 'round'
+        ctx.value.lineJoin = 'round'
+        ctx.value.strokeStyle = '#333'
+        ctx.value.lineWidth = currentTool.value === 'eraser' ? eraserSize.value : 3
 
         // 设置白色背景
         ctx.value.fillStyle = '#ffffff'
@@ -760,21 +941,21 @@ const handleResize = () => {
 
 // 监听橡皮擦大小变化
 watch(eraserSize, (newSize) => {
-  if (currentTool.value === 'eraser' && ctx.value) {
-    ctx.value.lineWidth = newSize
-  }
+    if (currentTool.value === 'eraser' && ctx.value) {
+        ctx.value.lineWidth = newSize
+    }
 })
 
 // 组件挂载时初始化
 onMounted(() => {
-  initCanvas()
-  initSpeechRecognition()
-  window.addEventListener('resize', handleResize)
+    initCanvas()
+    initSpeechRecognition()
+    window.addEventListener('resize', handleResize)
 })
 
 // 组件卸载时清理事件监听
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+    window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -1566,32 +1747,32 @@ onUnmounted(() => {
 }
 
 .tool-btn.clear-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #ff6b6b, #ff4757);
-  color: #fff;
-  border-color: #ff3742;
-  position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff6b6b, #ff4757);
+    color: #fff;
+    border-color: #ff3742;
+    position: relative;
 }
 
 .tool-btn.clear-btn .el-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  position: static;
-  width: 100%;
-  height: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    position: static;
+    width: 100%;
+    height: 1.5em;
 }
 
 .tool-btn.clear-btn span {
-  display: block;
-  width: 100%;
-  text-align: center;
-  margin: 0;
-  padding: 0;
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin: 0;
+    padding: 0;
 }
 
 .tool-btn:hover {
@@ -1626,81 +1807,81 @@ onUnmounted(() => {
 }
 
 .tool-btn .el-icon {
-  font-size: 1.2rem;
-  font-weight: 800;
+    font-size: 1.2rem;
+    font-weight: 800;
 }
 
 /* 橡皮擦设置样式 */
 .eraser-settings {
-  margin-top: 10px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 2px solid #f7a985;
-  border-radius: 10px;
-  box-shadow: inset 0px 1px 2px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.3);
+    border: 2px solid #f7a985;
+    border-radius: 10px;
+    box-shadow: inset 0px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .eraser-size-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #8b4513;
-  font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #8b4513;
+    font-weight: 600;
 }
 
 .eraser-size-control label {
-  font-size: 0.8rem;
-  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
+    font-size: 0.8rem;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
 }
 
 .eraser-slider {
-  flex: 1;
-  height: 6px;
-  background: linear-gradient(90deg, #f7a985, #ff8c42);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
+    flex: 1;
+    height: 6px;
+    background: linear-gradient(90deg, #f7a985, #ff8c42);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .eraser-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: linear-gradient(135deg, #fff8dc, #ffd700);
-  border: 2px solid #ff8c42;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #fff8dc, #ffd700);
+    border: 2px solid #ff8c42;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
 }
 
 .eraser-slider::-webkit-slider-thumb:hover {
-  background: linear-gradient(135deg, #ffd700, #ffb347);
-  transform: scale(1.1);
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    transform: scale(1.1);
 }
 
 .eraser-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  background: linear-gradient(135deg, #fff8dc, #ffd700);
-  border: 2px solid #ff8c42;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #fff8dc, #ffd700);
+    border: 2px solid #ff8c42;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
 }
 
 .eraser-settings .size-display {
-  font-size: 0.8rem;
-  color: #ff6347;
-  font-weight: 800;
-  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
-  min-width: 30px;
-  text-align: center;
+    font-size: 0.8rem;
+    color: #ff6347;
+    font-weight: 800;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+    min-width: 30px;
+    text-align: center;
 }
 
 /* 画布容器样式 */
@@ -1959,6 +2140,8 @@ onUnmounted(() => {
     opacity: 0.8;
 }
 
+
+
 /* 生成按钮包装器 */
 .generate-btn-wrapper {
     display: flex;
@@ -2122,7 +2305,8 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     position: relative;
-    min-height: 400px;
+    min-height: 500px;
+    aspect-ratio: 1;
 }
 
 .preview-placeholder {
@@ -2165,14 +2349,21 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
 }
 
 .preview-image img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 15px;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.preview-image img:hover {
+    transform: scale(1.02);
 }
 
 /* 原生消息提示容器 */
@@ -2433,45 +2624,50 @@ onUnmounted(() => {
         padding: 20px;
     }
 
-      .drawing-toolbar {
-    flex-direction: column;
-    gap: 15px;
-    align-items: stretch;
-  }
+    .drawing-toolbar {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
 
-  .tool-group {
-    justify-content: center;
-  }
+    .tool-group {
+        justify-content: center;
+    }
 
-  .eraser-settings {
-    margin-top: 8px;
-    padding: 6px 10px;
-  }
+    .eraser-settings {
+        margin-top: 8px;
+        padding: 6px 10px;
+    }
 
-  .eraser-size-control {
-    gap: 6px;
-  }
+    .eraser-size-control {
+        gap: 6px;
+    }
 
-  .eraser-size-control label {
-    font-size: 0.75rem;
-  }
+    .eraser-size-control label {
+        font-size: 0.75rem;
+    }
 
-  .eraser-slider {
-    height: 5px;
-  }
+    .eraser-slider {
+        height: 5px;
+    }
 
-  .eraser-slider::-webkit-slider-thumb {
-    width: 14px;
-    height: 14px;
-  }
+    .eraser-slider::-webkit-slider-thumb {
+        width: 14px;
+        height: 14px;
+    }
 
     .eraser-settings .size-display {
-    font-size: 0.75rem;
-    min-width: 25px;
-  }
+        font-size: 0.75rem;
+        min-width: 25px;
+    }
 
     .canvas-container {
         min-height: 550px;
+    }
+
+    .image-preview {
+        min-height: 400px;
+        aspect-ratio: 1;
     }
 
     .prompt-controls {
@@ -2496,6 +2692,8 @@ onUnmounted(() => {
         min-height: 80px;
         max-height: 150px;
     }
+
+
 
     /* 移动端装饰元素优化 */
     .decoration-circle {
@@ -2607,6 +2805,11 @@ onUnmounted(() => {
 
     .canvas-container {
         min-height: 450px;
+    }
+
+    .image-preview {
+        min-height: 350px;
+        aspect-ratio: 1;
     }
 
     .placeholder-icon {
