@@ -330,17 +330,17 @@ const translateToEnglish = async (chineseText) => {
     try {
         // 使用Google Translate API（免费版本）
         const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
-        
+
         if (!response.ok) {
             throw new Error(`翻译API请求失败: ${response.status}`)
         }
-        
+
         const result = await response.json()
-        
+
         if (result && result[0] && result[0][0] && result[0][0][0]) {
             return result[0][0][0]
         }
-        
+
         // 如果API返回格式不正确，返回原文
         return chineseText
 
@@ -533,17 +533,17 @@ const getAvailableControlNetModel = async () => {
     try {
         const response = await fetch(`${API_CONFIG.BASE_URL}/controlnet/model_list`)
         const models = await response.json()
-        
+
         // 优先选择 scribble 相关模型
-        const scribbleModels = models.model_list.filter(model => 
+        const scribbleModels = models.model_list.filter(model =>
             model.includes('scribble') || model.includes('sketch')
         )
-        
+
         if (scribbleModels.length > 0) {
             console.log('找到ControlNet模型:', scribbleModels[0])
             return scribbleModels[0]
         }
-        
+
         // 如果没有找到，返回默认模型
         return "control_v11p_sd15_scribble [d4ba51ff]"
     } catch (error) {
@@ -621,7 +621,7 @@ const generateImage = async () => {
         // 第三步：调用 img2img API
         let response
         let result
-        
+
         try {
             // 首先尝试使用 ControlNet
             response = await fetch(`${API_CONFIG.BASE_URL}/sdapi/v1/img2img`, {
@@ -636,17 +636,17 @@ const generateImage = async () => {
 
             result = await response.json()
             console.log('ControlNet生成成功，草图结构已被保留')
-            
+
         } catch (controlNetError) {
             console.warn('ControlNet失败，尝试备用方案:', controlNetError)
-            
+
             // 备用方案：不使用 ControlNet，但降低去噪强度以保留更多原图特征
             const backupPayload = {
                 ...payload,
                 denoising_strength: 0.25, // 进一步降低去噪强度
                 controlnet_units: [] // 移除 ControlNet
             }
-            
+
             response = await fetch(`${API_CONFIG.BASE_URL}/sdapi/v1/img2img`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
