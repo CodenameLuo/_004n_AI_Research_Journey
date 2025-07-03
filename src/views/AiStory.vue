@@ -307,6 +307,9 @@ const selfiePreview = ref('')
 // 生成的漫画
 const generatedComic = ref(null)
 
+// 当前会话ID
+const currentSessionId = ref(null)
+
 // 生成状态
 const isGenerating = ref(false)
 
@@ -321,15 +324,15 @@ const isStyleSelectOpen = ref(false)
 
 // 风格选项 - 对应后端支持的风格
 const styleOptions = [
-  { label: '写实风', value: '写实风' },
-  { label: '日本漫画风', value: '日本漫画风' },
-  { label: '数字油画风', value: '数字油画风' },
-  { label: '迪士尼皮克斯风', value: '迪士尼皮克斯风' },
-  { label: '摄影写真风格', value: '摄影写真风格' },
-  { label: '漫画书风格', value: '漫画书风格' },
-  { label: '艺术线条风', value: '艺术线条风' },
-  { label: '黑白电影风', value: '黑白电影风' },
-  { label: '3D建模风', value: '3D建模风' }
+  { label: '写实风', value: 'Realistic' },
+  { label: '日本漫画风', value: 'Japanese Anime' },
+  { label: '数字油画风', value: 'Digital Oil Painting' },
+  { label: '迪士尼皮克斯风', value: 'Disney Pixar' },
+  { label: '摄影写真风格', value: 'Photography' },
+  { label: '漫画书风格', value: 'Comic Book' },
+  { label: '艺术线条风', value: 'Line Art' },
+  { label: '黑白电影风', value: 'Film Noir' },
+  { label: '3D建模风', value: '3D Model' }
 ]
 
 // 原生消息提示系统
@@ -419,6 +422,9 @@ const validateImage = (file) => {
 const removeSelfie = () => {
   selfieImage.value = null
   selfiePreview.value = ''
+  // 清除之前的生成结果
+  generatedComic.value = null
+  currentSessionId.value = null
   NativeMessage.info('已移除自拍照')
 }
 
@@ -434,6 +440,9 @@ const clearDescription = () => {
 const handleDescriptionInput = (event) => {
   // 保留事件处理器以备将来使用
 }
+
+// API配置
+const API_BASE_URL = 'http://localhost:5001/api'
 
 // 生成漫画
 const generateComic = async () => {
@@ -456,17 +465,37 @@ const generateComic = async () => {
   try {
     NativeMessage.info('正在生成您的专属漫画，请稍候...')
     
-    // 模拟生成过程
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // 创建FormData发送请求
+    const formData = new FormData()
+    formData.append('selfie', selfieImage.value)
+    formData.append('style', userInfo.style)
+    formData.append('description', userInfo.description.trim())
     
-    // 模拟生成结果 - 使用示例图片
-    generatedComic.value = 'https://picsum.photos/400/600?random=' + Date.now()
+    // 调用后端API
+    const response = await fetch(`${API_BASE_URL}/generate-comic`, {
+      method: 'POST',
+      body: formData
+    })
     
-    NativeMessage.success('您的专属漫画生成成功！')
+    const result = await response.json()
+    
+    if (response.ok && result.success) {
+      generatedComic.value = result.imageUrl
+      currentSessionId.value = result.session_id
+      NativeMessage.success('您的专属漫画生成成功！')
+    } else {
+      throw new Error(result.error || '生成失败')
+    }
     
   } catch (error) {
     console.error('生成错误:', error)
-    NativeMessage.error('漫画生成失败，请重试！')
+    let errorMessage = '漫画生成失败，请重试！'
+    if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+      errorMessage = '网络连接失败，请检查服务器是否启动'
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    NativeMessage.error(errorMessage)
     generatedComic.value = null
   } finally {
     isGenerating.value = false
@@ -474,36 +503,34 @@ const generateComic = async () => {
 }
 
 // 下载功能
-const downloadComic = () => {
-  if (!generatedComic.value) {
+const downloadComic = async () => {
+  if (!generatedComic.value || !currentSessionId.value) {
     NativeMessage.warning('请先生成漫画！')
     return
   }
   
-  // 如果是base64图片，直接下载
-  if (generatedComic.value.startsWith('data:image')) {
-    const link = document.createElement('a')
-    link.href = generatedComic.value
-    link.download = 'AI_漫画.png'
-    link.click()
-  } else {
-    // 如果是URL，获取后下载
-    fetch(generatedComic.value)
-      .then(response => response.blob())
-      .then(blob => {
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = 'AI_漫画.png'
-        link.click()
-        URL.revokeObjectURL(link.href)
-      })
-      .catch(error => {
-        console.error('下载失败:', error)
-        NativeMessage.error('下载失败！')
-      })
+  try {
+    // 如果是base64图片，直接下载
+    if (generatedComic.value.startsWith('data:image')) {
+      const link = document.createElement('a')
+      link.href = generatedComic.value
+      link.download = 'AI_漫画.png'
+      link.click()
+      NativeMessage.success('开始下载漫画...')
+    } else {
+      // 使用后端下载API
+      const downloadUrl = `${API_BASE_URL}/download/${currentSessionId.value}`
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = 'AI_漫画.png'
+      link.click()
+      NativeMessage.success('开始下载漫画...')
+    }
+    
+  } catch (error) {
+    console.error('下载失败:', error)
+    NativeMessage.error('下载失败！')
   }
-  
-  NativeMessage.success('开始下载漫画...')
 }
 
 // 分享功能
@@ -516,25 +543,49 @@ const shareComic = async () => {
   try {
     NativeMessage.info('准备分享您的漫画作品...')
     
-    // 这里可以添加分享到社交媒体或画廊的逻辑
-    // 目前先简单复制到剪贴板或显示分享提示
-    
-    if (navigator.share) {
-      // 使用Web Share API（如果支持）
+    // 如果支持Web Share API
+    if (navigator.share && generatedComic.value.startsWith('data:image')) {
+      // 将base64转换为Blob进行分享
+      const response = await fetch(generatedComic.value)
+      const blob = await response.blob()
+      const file = new File([blob], 'AI_漫画.png', { type: 'image/png' })
+      
       await navigator.share({
         title: 'AI漫画作品',
         text: `看看我用AI生成的漫画！风格：${userInfo.style}`,
-        url: generatedComic.value
+        files: [file]
+      })
+      NativeMessage.success('分享成功！')
+    } else if (navigator.share) {
+      // 基本分享
+      await navigator.share({
+        title: 'AI漫画作品',
+        text: `看看我用AI生成的漫画！风格：${userInfo.style}。使用AI漫画生成器创作你的专属漫画！`
       })
       NativeMessage.success('分享成功！')
     } else {
-      // 备用分享方式
-      NativeMessage.success('您的漫画已准备好分享！')
+      // 复制到剪贴板作为备用方案
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`看看我用AI生成的漫画！风格：${userInfo.style}。使用AI漫画生成器创作你的专属漫画！`)
+        NativeMessage.success('分享文案已复制到剪贴板！')
+      } else {
+        NativeMessage.info('您的漫画已准备好分享！可以右键保存图片进行分享。')
+      }
     }
     
   } catch (error) {
     console.error('分享失败:', error)
-    NativeMessage.error('分享失败，请重试！')
+    // 如果分享失败，提供备用方案
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(`看看我用AI生成的漫画！风格：${userInfo.style}`)
+        NativeMessage.warning('直接分享失败，但分享文案已复制到剪贴板！')
+      } catch {
+        NativeMessage.error('分享失败，请手动保存图片进行分享！')
+      }
+    } else {
+      NativeMessage.error('分享失败，请右键保存图片进行分享！')
+    }
   }
 }
 
