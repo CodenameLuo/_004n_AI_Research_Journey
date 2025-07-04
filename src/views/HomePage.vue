@@ -144,6 +144,26 @@
           </div>
           <div class="card-glow"></div>
         </div>
+
+        <!-- 风格迁移卡片 -->
+        <div class="feature-card style-transfer-card" @click="navigateTo('/style-transfer')">
+          <div class="card-decoration">
+            <div class="card-star star-1">✦</div>
+            <div class="card-star star-2">✧</div>
+            <div class="card-star star-3">✦</div>
+          </div>
+          <div class="card-content">
+            <div class="card-icon">🖼️</div>
+            <h3 class="card-title">风格迁移</h3>
+            <p class="card-description">一键将图片转换为多种艺术风格</p>
+            <div class="card-features">
+              <span class="feature-tag">多风格</span>
+              <span class="feature-tag">快速生成</span>
+              <span class="feature-tag">高质量</span>
+            </div>
+          </div>
+          <div class="card-glow"></div>
+        </div>
       </div>
     </div>
 

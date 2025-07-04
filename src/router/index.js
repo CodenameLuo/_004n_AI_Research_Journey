@@ -3,6 +3,7 @@ import HomePage from '../views/HomePage.vue'
 import StoryDiffusion from '../views/StoryDiffusion.vue'
 import AiStory from '../views/AiStory.vue'
 import StickColor from '../views/StickColor.vue'
+import StyleTransfer from '../views/StyleTransfer.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +27,11 @@ const router = createRouter({
       path: '/stick-color',
       name: 'StickColor',
       component: StickColor,
+    },
+    {
+      path: '/style-transfer',
+      name: 'StyleTransfer',
+      component: StyleTransfer,
     }
   ],
 })

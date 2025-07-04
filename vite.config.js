@@ -19,7 +19,14 @@ export default defineConfig({
     }),
   ],
   server: {
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    proxy: {
+      '/lingxi': {
+        target: 'https://api.lingximoyu.com',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/lingxi/, ''),
+      },
+    },
   },
   resolve: {
     alias: {
