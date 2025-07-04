@@ -1286,6 +1286,10 @@ onUnmounted(() => {
     gap: 20px;
 }
 
+.output-section {
+    position: relative;
+}
+
 /* 底部控制面板 */
 .control-panel {
     background: #fff8dc;
@@ -1412,7 +1416,7 @@ onUnmounted(() => {
 }
 
 .image-preview {
-    width: 95%;
+    width: 90%;
     height: auto;
     display: flex;
     align-items: center;
@@ -1420,12 +1424,10 @@ onUnmounted(() => {
     position: relative;
 }
 
-
-
 .image-overlay {
     position: absolute;
-    top: -10px;
-    right: -5px;
+    top: 5px;
+    right: -10px;
     opacity: 1;
     transition: opacity 0.3s ease;
 }
@@ -2130,11 +2132,11 @@ onUnmounted(() => {
     }
 
     .image-container {
-        height: 350px;
+        height: 450px;
     }
     
     .input-uploader {
-        height: 350px;
+        height: 450px;
     }
     
     .control-panel {
@@ -2236,11 +2238,11 @@ onUnmounted(() => {
     }
     
     .image-container {
-        height: 280px;
+        height: 380px;
     }
     
     .input-uploader {
-        height: 280px;
+        height: 380px;
     }
     
     .control-panel,
