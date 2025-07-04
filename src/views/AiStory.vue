@@ -444,6 +444,30 @@ const handleDescriptionInput = (event) => {
 // API配置
 const API_BASE_URL = 'http://localhost:5001/api'
 
+// 检测文本是否包含中文
+const containsChinese = (text) => /[\u4e00-\u9fa5]/.test(text)
+
+// 翻译中文到英文（使用 Google Translate API）
+const translateToEnglish = async (chineseText) => {
+  if (!chineseText || !containsChinese(chineseText)) {
+    return chineseText
+  }
+  try {
+    const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
+    if (!response.ok) {
+      throw new Error(`翻译API请求失败: ${response.status}`)
+    }
+    const result = await response.json()
+    if (result && result[0] && result[0][0] && result[0][0][0]) {
+      return result[0][0][0]
+    }
+    return chineseText
+  } catch (error) {
+    console.error('翻译失败:', error)
+    return chineseText
+  }
+}
+
 // 生成漫画
 const generateComic = async () => {
   // 验证输入
@@ -465,11 +489,14 @@ const generateComic = async () => {
   try {
     NativeMessage.info('正在生成您的专属漫画，请稍候...')
     
+    // 翻译描述为英文（若包含中文，则自动翻译）
+    const translatedDescription = await translateToEnglish(userInfo.description.trim())
+    
     // 创建FormData发送请求
     const formData = new FormData()
     formData.append('selfie', selfieImage.value)
     formData.append('style', userInfo.style)
-    formData.append('description', userInfo.description.trim())
+    formData.append('description', translatedDescription)
     
     // 调用后端API
     const response = await fetch(`${API_BASE_URL}/generate-comic`, {
