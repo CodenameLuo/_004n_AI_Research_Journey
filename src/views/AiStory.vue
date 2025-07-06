@@ -489,17 +489,28 @@ const generateComic = async () => {
   try {
     NativeMessage.info('正在生成您的专属漫画，请稍候...')
     
-    // 翻译描述为英文（若包含中文，则自动翻译）
-    const translatedDescription = await translateToEnglish(userInfo.description.trim())
+    // 多行分镜，每行单独翻译，拼回多行字符串
+    const lines = userInfo.description.trim().split('\n').filter(l => l.trim())
+    const translatedLines = []
+    for (const line of lines) {
+      if (containsChinese(line)) {
+        translatedLines.push(await translateToEnglish(line))
+      } else {
+        translatedLines.push(line)
+      }
+    }
+    const translatedDescription = translatedLines.join('\n')
     
     // 创建FormData发送请求
     const formData = new FormData()
     formData.append('selfie', selfieImage.value)
     formData.append('style', userInfo.style)
     formData.append('description', translatedDescription)
+    // 原始中文描述，用于字幕
+    formData.append('description_cn', userInfo.description.trim())
     
     // 调用后端API
-    const response = await fetch(`${API_BASE_URL}/generate-comic`, {
+    const response = await fetch(`${API_BASE_URL}/generate-comic-strip`, {
       method: 'POST',
       body: formData
     })
@@ -642,7 +653,7 @@ const initSpeechRecognition = () => {
     recognition.value = new SpeechRecognition()
     
     // 配置语音识别
-    recognition.value.continuous = false
+    recognition.value.continuous = true
     recognition.value.interimResults = true
     recognition.value.lang = 'zh-CN'
     recognition.value.maxAlternatives = 1
