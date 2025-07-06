@@ -2249,7 +2249,7 @@ onUnmounted(() => {
 }
 
 .preview-image {
-  width: 100%;
+  width: 95%;
   height: 100%;
   display: flex;
   align-items: center;
@@ -2257,7 +2257,7 @@ onUnmounted(() => {
 }
 
 .preview-image img {
-  max-width: 100%;
+  max-width: 95%;
   max-height: 100%;
   object-fit: contain;
   border-radius: 15px;
