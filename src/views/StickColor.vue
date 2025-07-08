@@ -131,39 +131,209 @@
                     </div>
                 </div>
 
-                <!-- 提示词输入 -->
-                <div class="prompt-section">
-                    <div class="prompt-header">
-                        <label>描述提示词</label>
-                        <div class="prompt-controls">
-                            <div class="voice-input-btn" :class="{ 'recording': isRecording }" @mousedown="startRecording" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording ? '录音中...' : '按住说话'">
-                                <el-icon v-if="!isRecording">
-                                    <Microphone />
-                                </el-icon>
-                                <div v-else class="recording-indicator">
-                                    <div class="pulse-ring"></div>
-                                    <el-icon>
-                                        <Microphone />
-                                    </el-icon>
+                <!-- 移动端提示词输入（仅在移动端显示） -->
+                <div class="mobile-prompt-section">
+                    <div class="prompt-inputs">
+                        <!-- 物体描述输入 -->
+                        <div class="input-group">
+                            <div class="input-header">
+                                <label>你画的是什么？</label>
+                                <div class="input-controls">
+                                    <div class="voice-input-btn" :class="{ 'recording': isRecording && recordingType === 'object' }" @mousedown="startRecording('object')" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording('object')" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording && recordingType === 'object' ? '录音中...' : '按住说话'">
+                                        <el-icon v-if="!(isRecording && recordingType === 'object')">
+                                            <Microphone />
+                                        </el-icon>
+                                        <div v-else class="recording-indicator">
+                                            <div class="pulse-ring"></div>
+                                            <el-icon>
+                                                <Microphone />
+                                            </el-icon>
+                                        </div>
+                                    </div>
+                                    <el-button type="warning" size="small" @click="clearObjectPrompt" :disabled="!objectPrompt.trim()" class="clear-btn">
+                                        <el-icon>
+                                            <Delete />
+                                        </el-icon>
+                                        清空
+                                    </el-button>
                                 </div>
                             </div>
-                            <el-button type="warning" size="small" @click="clearPrompt" :disabled="!prompt.trim()" class="clear-btn">
-                                <el-icon>
-                                    <Delete />
-                                </el-icon>
-                                清空
-                            </el-button>
+                            <textarea v-model="objectPrompt" placeholder="详细描述你想画的物体，比如：一只可爱的小猫、一朵向日葵、一座城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                        </div>
+
+                        <!-- 颜色描述输入 -->
+                        <div class="input-group">
+                            <div class="input-header">
+                                <label>你想要的颜色？</label>
+                                <div class="input-controls">
+                                    <div class="voice-input-btn" :class="{ 'recording': isRecording && recordingType === 'color' }" @mousedown="startRecording('color')" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording('color')" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording && recordingType === 'color' ? '录音中...' : '按住说话'">
+                                        <el-icon v-if="!(isRecording && recordingType === 'color')">
+                                            <Microphone />
+                                        </el-icon>
+                                        <div v-else class="recording-indicator">
+                                            <div class="pulse-ring"></div>
+                                            <el-icon>
+                                                <Microphone />
+                                            </el-icon>
+                                        </div>
+                                    </div>
+                                    <el-button type="warning" size="small" @click="clearColorPrompt" :disabled="!colorPrompt.trim()" class="clear-btn">
+                                        <el-icon>
+                                            <Delete />
+                                        </el-icon>
+                                        清空
+                                    </el-button>
+                                </div>
+                            </div>
+                            <textarea v-model="colorPrompt" placeholder="描述你想要给简笔画涂上什么颜色，比如：鲜艳的红色和黄色、温暖的橙色、清新的蓝绿色..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                        </div>
+
+                        <!-- 风格选择 -->
+                        <div class="input-group">
+                            <div class="input-header">
+                                <label>你想要的风格？</label>
+                            </div>
+                            <div class="custom-select-wrapper">
+                                <div 
+                                    class="custom-select" 
+                                    :class="{ 'is-open': isStyleSelectOpen }"
+                                    @click="toggleStyleSelect"
+                                >
+                                    <div class="select-display">
+                                        {{ selectedStyle ? selectedStyle.name : '请选择图片风格' }}
+                                    </div>
+                                    <div class="select-arrow">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M7 10l5 5 5-5z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="select-options" v-show="isStyleSelectOpen">
+                                    <div 
+                                        class="select-option"
+                                        :class="{ 'is-selected': selectedStyle && selectedStyle.name === style.name }"
+                                        v-for="style in styleTemplates" 
+                                        :key="style.name"
+                                        @click="selectStyle(style)"
+                                    >
+                                        {{ style.name }}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    
+                    <!-- 移动端生成按钮 -->
+                    <div class="generate-btn-wrapper">
+                        <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing || !objectPrompt.trim() || !selectedStyle" class="generate-btn">
+                            <el-icon>
+                                <MagicStick />
+                            </el-icon>
+                            {{ isGenerating ? '正在生成中...' : '生成精美图片' }}
+                        </el-button>
+                    </div>
+                </div>
+            </div>
 
-                    <textarea v-model="prompt" placeholder="描述你想要生成的图片风格和内容，比如：水彩画风格、卡通风格、写实风格等..." class="prompt-textarea" rows="4" @input="handlePromptInput"></textarea>
+            <!-- 中间：提示词输入区域（仅在PC端显示） -->
+            <div class="description-section">
+                <div class="section-title">
+                    <h2>✨ 描述创作</h2>
                 </div>
 
+                <div class="prompt-inputs">
+                    <!-- 物体描述输入 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label>你画的是什么？</label>
+                            <div class="input-controls">
+                                <div class="voice-input-btn" :class="{ 'recording': isRecording && recordingType === 'object' }" @mousedown="startRecording('object')" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording('object')" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording && recordingType === 'object' ? '录音中...' : '按住说话'">
+                                    <el-icon v-if="!(isRecording && recordingType === 'object')">
+                                        <Microphone />
+                                    </el-icon>
+                                    <div v-else class="recording-indicator">
+                                        <div class="pulse-ring"></div>
+                                        <el-icon>
+                                            <Microphone />
+                                        </el-icon>
+                                    </div>
+                                </div>
+                                <el-button type="warning" size="small" @click="clearObjectPrompt" :disabled="!objectPrompt.trim()" class="clear-btn">
+                                    <el-icon>
+                                        <Delete />
+                                    </el-icon>
+                                    清空
+                                </el-button>
+                            </div>
+                        </div>
+                        <textarea v-model="objectPrompt" placeholder="详细描述你想画的物体，比如：一只可爱的小猫、一朵向日葵、一座城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                    </div>
 
+                    <!-- 颜色描述输入 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label>你想要的颜色？</label>
+                            <div class="input-controls">
+                                <div class="voice-input-btn" :class="{ 'recording': isRecording && recordingType === 'color' }" @mousedown="startRecording('color')" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording('color')" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording && recordingType === 'color' ? '录音中...' : '按住说话'">
+                                    <el-icon v-if="!(isRecording && recordingType === 'color')">
+                                        <Microphone />
+                                    </el-icon>
+                                    <div v-else class="recording-indicator">
+                                        <div class="pulse-ring"></div>
+                                        <el-icon>
+                                            <Microphone />
+                                        </el-icon>
+                                    </div>
+                                </div>
+                                <el-button type="warning" size="small" @click="clearColorPrompt" :disabled="!colorPrompt.trim()" class="clear-btn">
+                                    <el-icon>
+                                        <Delete />
+                                    </el-icon>
+                                    清空
+                                </el-button>
+                            </div>
+                        </div>
+                        <textarea v-model="colorPrompt" placeholder="描述你想要给简笔画涂上什么颜色，比如：鲜艳的红色和黄色、温暖的橙色、清新的蓝绿色..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                    </div>
 
-                <!-- 生成按钮 -->
+                    <!-- 风格选择 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label>你想要的风格？</label>
+                        </div>
+                        <div class="custom-select-wrapper">
+                            <div 
+                                class="custom-select" 
+                                :class="{ 'is-open': isStyleSelectOpen }"
+                                @click="toggleStyleSelect"
+                            >
+                                <div class="select-display">
+                                    {{ selectedStyle ? selectedStyle.name : '请选择图片风格' }}
+                                </div>
+                                <div class="select-arrow">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M7 10l5 5 5-5z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="select-options" v-show="isStyleSelectOpen">
+                                <div 
+                                    class="select-option"
+                                    :class="{ 'is-selected': selectedStyle && selectedStyle.name === style.name }"
+                                    v-for="style in styleTemplates" 
+                                    :key="style.name"
+                                    @click="selectStyle(style)"
+                                >
+                                    {{ style.name }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PC端生成按钮 -->
                 <div class="generate-btn-wrapper">
-                    <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing" class="generate-btn">
+                    <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing || !objectPrompt.trim() || !selectedStyle" class="generate-btn">
                         <el-icon>
                             <MagicStick />
                         </el-icon>
@@ -230,6 +400,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { EditPen, Delete, Refresh, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
+import styleTemplateData from '@/assets/style_template.json'
 
 // API 配置
 const API_CONFIG = {
@@ -249,8 +420,13 @@ const hasDrawing = ref(false)
 const lastX = ref(0)
 const lastY = ref(0)
 
-// 提示词
-const prompt = ref('')
+// 提示词 - 修改为三个独立的输入
+const objectPrompt = ref('')  // 物体描述
+const colorPrompt = ref('')   // 颜色描述
+const selectedStyle = ref(null)  // 选择的风格
+
+// 风格模板数据
+const styleTemplates = ref(styleTemplateData)
 
 // 生成状态
 const isGenerating = ref(false)
@@ -258,9 +434,13 @@ const generatedImage = ref(null)
 
 // 语音识别相关状态
 const isRecording = ref(false)
+const recordingType = ref('') // 'object', 'color'
 const recognition = ref(null)
 const isRecognitionSupported = ref(false)
 const isRecognitionActive = ref(false)
+
+// 风格选择下拉菜单状态
+const isStyleSelectOpen = ref(false)
 
 // 原生消息提示系统
 const messages = ref([])
@@ -516,11 +696,29 @@ const handleTouchEnd = (e) => {
 }
 
 // 清空提示词
-const clearPrompt = () => {
-    if (prompt.value.trim()) {
-        prompt.value = ''
-        NativeMessage.info('提示词已清空')
+const clearObjectPrompt = () => {
+    if (objectPrompt.value.trim()) {
+        objectPrompt.value = ''
+        NativeMessage.info('物体描述已清空')
     }
+}
+
+const clearColorPrompt = () => {
+    if (colorPrompt.value.trim()) {
+        colorPrompt.value = ''
+        NativeMessage.info('颜色描述已清空')
+    }
+}
+
+// 风格选择相关方法
+const toggleStyleSelect = () => {
+    isStyleSelectOpen.value = !isStyleSelectOpen.value
+}
+
+const selectStyle = (style) => {
+    selectedStyle.value = style
+    isStyleSelectOpen.value = false
+    NativeMessage.info(`已选择风格：${style.name}`)
 }
 
 // 处理提示词输入
@@ -559,6 +757,17 @@ const generateImage = async () => {
         return
     }
 
+    // 验证必填项
+    if (!objectPrompt.value.trim()) {
+        NativeMessage.warning('请描述你画的是什么！')
+        return
+    }
+
+    if (!selectedStyle.value) {
+        NativeMessage.warning('请选择图片风格！')
+        return
+    }
+
     isGenerating.value = true
 
     try {
@@ -567,14 +776,20 @@ const generateImage = async () => {
         // 获取画布图像数据
         const imgData = canvas.value.toDataURL("image/png")
 
-        // 构建提示词，如果没有输入则使用默认值
-        const originalPrompt = prompt.value.trim() || 'a beautiful artwork, high quality, detailed, colorful'
+        // 构建完整的提示词：物体描述 + 颜色描述 + 风格模板
+        let fullPrompt = objectPrompt.value.trim()
+        
+        // 添加颜色描述（如果有）
+        if (colorPrompt.value.trim()) {
+            fullPrompt += ', ' + colorPrompt.value.trim()
+        }
 
-        // 智能翻译中文提示词为英文
-        const userPrompt = await smartTranslatePrompt(originalPrompt)
+        // 使用选择的风格模板构建最终提示词
+        const styleTemplate = selectedStyle.value.prompt
+        const userPrompt = await smartTranslatePrompt(styleTemplate.replace('{prompt}', fullPrompt))
 
-        // 负面提示词
-        const negativePrompt = "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
+        // 使用风格模板的负面提示词
+        const negativePrompt = selectedStyle.value.negative_prompt || "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
 
         // 第一步：设置模型（可选）
         try {
@@ -589,6 +804,7 @@ const generateImage = async () => {
 
         // 获取可用的 ControlNet 模型
         const controlNetModel = await getAvailableControlNetModel()
+
 
         // 第二步：构建 img2img 请求参数
         const payload = {
@@ -668,7 +884,7 @@ const generateImage = async () => {
         // 设置生成的图片
         generatedImage.value = "data:image/png;base64," + result.images[0]
 
-        NativeMessage.success('图片生成成功！手绘草图的结构已被保留')
+        NativeMessage.success(`图片生成成功！使用了${selectedStyle.value.name}风格`)
 
     } catch (error) {
         console.error('生成错误:', error)
@@ -782,17 +998,33 @@ const initSpeechRecognition = () => {
 
             // 只有当有最终确定的转录结果时才处理
             if (finalTranscript.trim()) {
-                if (prompt.value.trim()) {
-                    // 检查当前描述是否以标点符号结尾
-                    const lastChar = prompt.value.trim().slice(-1)
-                    const needsSeparator = !['.', '。', ',', '，', '!', '！', '?', '？', ';', '；'].includes(lastChar)
+                // 根据录音类型决定更新哪个输入框
+                if (recordingType.value === 'object') {
+                    if (objectPrompt.value.trim()) {
+                        // 检查当前描述是否以标点符号结尾
+                        const lastChar = objectPrompt.value.trim().slice(-1)
+                        const needsSeparator = !['.', '。', ',', '，', '!', '！', '?', '？', ';', '；'].includes(lastChar)
 
-                    // 添加新的语音输入内容
-                    const separator = needsSeparator ? '，' : ''
-                    prompt.value += separator + finalTranscript
-                } else {
-                    // 如果描述为空，直接设置
-                    prompt.value = finalTranscript
+                        // 添加新的语音输入内容
+                        const separator = needsSeparator ? '，' : ''
+                        objectPrompt.value += separator + finalTranscript
+                    } else {
+                        // 如果描述为空，直接设置
+                        objectPrompt.value = finalTranscript
+                    }
+                } else if (recordingType.value === 'color') {
+                    if (colorPrompt.value.trim()) {
+                        // 检查当前描述是否以标点符号结尾
+                        const lastChar = colorPrompt.value.trim().slice(-1)
+                        const needsSeparator = !['.', '。', ',', '，', '!', '！', '?', '？', ';', '；'].includes(lastChar)
+
+                        // 添加新的语音输入内容
+                        const separator = needsSeparator ? '，' : ''
+                        colorPrompt.value += separator + finalTranscript
+                    } else {
+                        // 如果描述为空，直接设置
+                        colorPrompt.value = finalTranscript
+                    }
                 }
             }
         }
@@ -801,6 +1033,7 @@ const initSpeechRecognition = () => {
         recognition.value.onend = () => {
             isRecording.value = false
             isRecognitionActive.value = false
+            recordingType.value = ''
             NativeMessage.info('语音输入结束')
         }
 
@@ -809,6 +1042,7 @@ const initSpeechRecognition = () => {
             console.error('语音识别错误:', event.error)
             isRecording.value = false
             isRecognitionActive.value = false
+            recordingType.value = ''
 
             switch (event.error) {
                 case 'no-speech':
@@ -839,7 +1073,7 @@ const initSpeechRecognition = () => {
 }
 
 // 开始录音
-const startRecording = () => {
+const startRecording = (type) => {
     if (!isRecognitionSupported.value) {
         NativeMessage.warning('当前浏览器不支持语音输入功能')
         return
@@ -851,6 +1085,7 @@ const startRecording = () => {
     }
 
     isRecording.value = true
+    recordingType.value = type
 
     try {
         recognition.value.start()
@@ -858,6 +1093,7 @@ const startRecording = () => {
         console.error('启动语音识别失败:', error)
         isRecording.value = false
         isRecognitionActive.value = false
+        recordingType.value = ''
         NativeMessage.error('语音输入启动失败')
     }
 }
@@ -872,11 +1108,13 @@ const stopRecording = () => {
             // 即使出错也要重置状态
             isRecording.value = false
             isRecognitionActive.value = false
+            recordingType.value = ''
         }
     } else {
         // 直接重置状态
         isRecording.value = false
         isRecognitionActive.value = false
+        recordingType.value = ''
     }
 }
 
@@ -909,6 +1147,14 @@ const burstBubble = (event) => {
     setTimeout(() => {
         bubble.style.animation = ''
     }, 300)
+}
+
+// 点击外部关闭下拉菜单
+const handleClickOutside = (event) => {
+    const selectWrapper = event.target.closest('.custom-select-wrapper')
+    if (!selectWrapper && isStyleSelectOpen.value) {
+        isStyleSelectOpen.value = false
+    }
 }
 
 // 窗口大小变化时重新调整画布
@@ -951,11 +1197,13 @@ onMounted(() => {
     initCanvas()
     initSpeechRecognition()
     window.addEventListener('resize', handleResize)
+    document.addEventListener('click', handleClickOutside)
 })
 
 // 组件卸载时清理事件监听
 onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
+    document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -1650,7 +1898,7 @@ onUnmounted(() => {
 /* 主内容区域 */
 .main-content {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr; /* PC端三列等宽布局：绘画区域 + 提示词区域 + 输出区域 */
     gap: 25px;
     max-width: 1800px;
     margin: 0 auto;
@@ -1658,8 +1906,9 @@ onUnmounted(() => {
     z-index: 2;
 }
 
-/* 两个区域共同样式 */
+/* 三个区域共同样式 */
 .drawing-section,
+.description-section,
 .output-section {
     background: #fff8dc;
     border-radius: 25px;
@@ -1670,6 +1919,36 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    min-height: 600px; /* 确保三个板块都有统一的最小高度 */
+}
+
+/* PC端显示中间的提示词区域，隐藏移动端的提示词区域 */
+.description-section {
+    display: flex; /* PC端显示 */
+}
+
+.mobile-prompt-section {
+    display: none; /* PC端隐藏 */
+}
+
+/* PC端描述创作区域的布局优化（仅在PC端生效） */
+@media (min-width: 1001px) {
+    .description-section {
+        justify-content: space-between; /* 内容分布 */
+    }
+
+    .description-section .prompt-inputs {
+        flex: 1; /* 占据剩余空间 */
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .description-section .generate-btn-wrapper {
+        margin-top: auto; /* 推到底部 */
+        flex-shrink: 0; /* 不压缩 */
+    }
 }
 
 .section-title {
@@ -1955,13 +2234,51 @@ onUnmounted(() => {
     gap: 10px;
 }
 
-.prompt-header {
+.prompt-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* PC端描述创作区域内的输入组样式（仅在PC端生效） */
+@media (min-width: 1001px) {
+    .description-section .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* 让前两个输入组（物体描述和颜色描述）平均分配空间 */
+    .description-section .input-group:nth-child(1),
+    .description-section .input-group:nth-child(2) {
+        flex: 1;
+    }
+
+    /* 风格选择保持固定高度 */
+    .description-section .input-group:nth-child(3) {
+        flex: 0 0 auto;
+    }
+
+    .description-section .input-group .prompt-textarea {
+        flex: 1; /* 让文本框占据剩余空间 */
+        min-height: 80px; /* 最小高度 */
+        resize: none; /* 禁用手动调整大小 */
+    }
+}
+
+.input-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.prompt-header label {
+.input-header label {
     color: #8b4513;
     font-size: 1.2rem;
     text-shadow: 1px 1px 0px #ffd700;
@@ -1969,7 +2286,7 @@ onUnmounted(() => {
     font-weight: 600;
 }
 
-.prompt-controls {
+.input-controls {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -2568,20 +2885,42 @@ onUnmounted(() => {
 /* 响应式设计 */
 @media (max-width: 1400px) {
     .main-content {
+        grid-template-columns: 1fr 1fr 1fr; /* 中等屏幕仍保持等宽 */
         max-width: 1200px;
         gap: 20px;
     }
 }
 
-@media (max-width: 1200px) {
+/* 平板设备：两列布局，但保持独立的提示词区域 */
+@media (max-width: 1000px) {
     .main-content {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* 改为单列，但顺序是绘画->提示词->输出 */
         gap: 20px;
         max-width: 100%;
     }
 
-    .canvas-container {
-        min-height: 550px;
+    .drawing-section,
+    .description-section,
+    .output-section {
+        min-height: auto; /* 平板端移除最小高度限制 */
+    }
+
+    .description-section {
+        display: flex !important; /* 显示独立的提示词区域 */
+        justify-content: normal; /* 重置PC端的布局 */
+    }
+
+    .description-section .prompt-inputs {
+        flex: none; /* 重置PC端的flex设置 */
+        margin-bottom: 20px; /* 恢复正常间距 */
+    }
+
+    .description-section .generate-btn-wrapper {
+        margin-top: 0; /* 重置PC端的margin-top */
+    }
+
+    .mobile-prompt-section {
+        display: none !important; /* 隐藏绘画区域内的提示词 */
     }
 }
 
@@ -2589,6 +2928,30 @@ onUnmounted(() => {
     .stick-color {
         padding: 10px;
         font-size: 14px;
+    }
+
+    .main-content {
+        grid-template-columns: 1fr; /* 移动端单列布局 */
+        gap: 20px;
+        max-width: 100%;
+    }
+
+    .drawing-section,
+    .description-section,
+    .output-section {
+        min-height: auto; /* 移动端移除最小高度限制 */
+    }
+
+    /* 小屏移动端隐藏中间的独立提示词区域 */
+    .description-section {
+        display: none !important;
+    }
+
+    /* 小屏移动端显示绘画区域内的提示词区域 */
+    .mobile-prompt-section {
+        display: flex !important;
+        flex-direction: column;
+        gap: 20px;
     }
 
     .header {
@@ -2618,6 +2981,7 @@ onUnmounted(() => {
     }
 
     .drawing-section,
+    .description-section,
     .output-section {
         border-width: 4px;
         box-shadow: 0px 6px #ff6347;
@@ -2872,5 +3236,89 @@ onUnmounted(() => {
 
 :deep(.el-icon) {
     font-weight: 800;
+}
+
+/* 自定义下拉选择器样式 */
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1em 1.2em;
+    background: #fff8dc;
+    border: 4px solid #f7a985;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #8b4513;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
+    user-select: none;
+}
+
+.custom-select:hover {
+    border-color: #ffb347;
+    background: #fffacd;
+}
+
+.custom-select.is-open {
+    border-color: #ff8c42;
+    box-shadow: 0 0 0 4px #ffe4b5, 0 2px 6px #ffd700;
+}
+
+.select-display {
+    flex: 1;
+    text-align: left;
+}
+
+.select-arrow {
+    margin-left: 10px;
+    color: #8b4513;
+    transition: transform 0.2s ease;
+}
+
+.custom-select.is-open .select-arrow {
+    transform: rotate(180deg);
+}
+
+.select-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff8dc;
+    border: 4px solid #f7a985;
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.select-option {
+    padding: 0.8em 1.2em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #8b4513;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(247, 169, 133, 0.3);
+}
+
+.select-option:hover {
+    background: #ffe4b5;
+    color: #ff6347;
+}
+
+.select-option.is-selected {
+    background: #ffb347;
+    color: #8b4513;
+    font-weight: 600;
 }
 </style>
