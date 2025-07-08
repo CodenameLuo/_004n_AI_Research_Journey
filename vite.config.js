@@ -20,12 +20,43 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
+    port: 7100,
+
     proxy: {
-      '/lingxi': {
+
+        // 功能1
+        '/StoryDiffusion_api': {
+            target: 'http://localhost:8100',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/StoryDiffusion_api/, ''),
+        },
+        '/Gallery_api': {
+            target: 'http://localhost:8100',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/Gallery_api/, ''),
+        },
+
+        // 功能2
+        '/AiStory_api': {
+            target: 'http://localhost:8100',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/AiStory_api/, ''),
+        },
+
+        // 功能3
+        '/StickColor_api': {
+            target: 'http://localhost:8100',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/StickColor_api/, ''),
+        },
+
+        // 功能4
+        '/lingxi': {
         target: 'https://api.lingximoyu.com',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/lingxi/, ''),
-      },
+        },
+        
     },
   },
   resolve: {
