@@ -442,7 +442,8 @@ const handleDescriptionInput = (event) => {
 }
 
 // API配置
-const API_BASE_URL = 'http://localhost:5001/api'
+// const API_BASE_URL = 'http://localhost:5001/api'
+const API_BASE_URL = '/AiStory_api'
 
 // 检测文本是否包含中文
 const containsChinese = (text) => /[\u4e00-\u9fa5]/.test(text)
