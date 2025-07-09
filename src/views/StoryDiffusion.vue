@@ -418,7 +418,8 @@ const styleOptions = [
 
 // 后端API基础URL
 // const API_BASE_URL = 'https://www.ai-study-nku.com/api'
-const API_BASE_URL = 'http://localhost:5000'
+// const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = '/StoryDiffusion_api'
 
 // 当前会话ID
 const sessionId = ref('')
