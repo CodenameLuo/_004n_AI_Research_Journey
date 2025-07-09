@@ -20,6 +20,7 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
+    port: 5500,
     proxy: {
       '/lingxi': {
         target: 'https://api.lingximoyu.com',
