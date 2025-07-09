@@ -67,9 +67,6 @@
         <p class="subtitle">
           <span class="subtitle-highlight">用AI创造属于你的童话故事</span>
         </p>
-        <div class="co-branding">
-          南开大学 &amp; 曙光水镇 联合出品
-        </div>
       </div>
 
       <!-- 光芒效果 -->
@@ -98,7 +95,7 @@
                 <Plus />
               </el-icon>
               <div class="upload-text">拖拽或点击上传自拍照</div>
-              <div class="upload-hint">支持JPG、PNG格式</div>
+              <div class="upload-hint">支持JPG、PNG格式，小于10MB</div>
             </div>
             <div v-else class="image-preview">
               <img :src="selfiePreview" alt="自拍照" />
@@ -147,52 +144,16 @@
           <h2>⚙️ 参数设置</h2>
         </div>
         <div class="params-form">
-          <div class="form-item-row name-gender-row">
-            <div class="name-col">
-              <label>姓名</label>
-              <input v-model="userInfo.name" placeholder="请输入你的姓名" class="cartoon-input" />
-            </div>
-            <div class="gender-col">
-              <label>性别</label>
-              <el-radio-group v-model="userInfo.gender" style="flex-wrap: nowrap;">
-                <el-radio-button value="male">👦 男孩</el-radio-button>
-                <el-radio-button value="female">👧 女孩</el-radio-button>
-              </el-radio-group>
-            </div>
-          </div>
           <div class="form-item">
-            <label>个人描述</label>
-            <div class="description-wrapper">
-              <div class="description-number">
-                <div 
-                  class="voice-input-btn" 
-                  :class="{ 'recording': recordingIndex === -2 }"
-                  @mousedown="startRecording(-2)"
-                  @mouseup="stopRecording"
-                  @mouseleave="stopRecording"
-                  @touchstart.passive="startRecording(-2)"
-                  @touchend.passive="stopRecording"
-                  @touchcancel.passive="stopRecording"
-                  :title="recordingIndex === -2 ? '录音中...' : '按住说话'"
-                >
-                  <el-icon v-if="recordingIndex !== -2">
-                    <Microphone />
-                  </el-icon>
-                  <div v-else class="recording-indicator">
-                    <div class="pulse-ring"></div>
-                    <el-icon>
-                      <Microphone />
-                    </el-icon>
-                  </div>
-                </div>
-              </div>
-              <textarea
-                v-model="userInfo.personDescription"
-                placeholder="请输入你的个人描述"
-                class="cartoon-textarea"
-                rows="2"
-              ></textarea>
-            </div>
+            <label>姓名</label>
+            <input v-model="userInfo.name" placeholder="请输入你的姓名" class="cartoon-input" />
+          </div>
+          <div class="form-item-row">
+            <label>性别</label>
+            <el-radio-group v-model="userInfo.gender" size="large">
+              <el-radio-button value="male">👦 男孩</el-radio-button>
+              <el-radio-button value="female">👧 女孩</el-radio-button>
+            </el-radio-group>
           </div>
           <div class="form-item">
             <label>图片风格</label>
@@ -369,7 +330,6 @@ const userInfo = reactive({
   name: '',
   gender: '',
   style: '',
-  personDescription: '', // 新增个人描述
   descriptions: Array(8).fill('') // 8个描述
 })
 
@@ -418,7 +378,8 @@ const styleOptions = [
 
 // 后端API基础URL
 // const API_BASE_URL = 'https://www.ai-study-nku.com/api'
-const API_BASE_URL = 'http://localhost:5000'
+// const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = '/StoryDiffusion_api'
 
 // 当前会话ID
 const sessionId = ref('')
@@ -658,7 +619,11 @@ const validateImage = (file) => {
     NativeMessage.error('请上传JPG或PNG格式的图片！')
     return false
   }
-  // 取消大小限制
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    NativeMessage.error('图片大小不能超过10MB！')
+    return false
+  }
   return true
 }
 
@@ -752,17 +717,6 @@ const generateImages = async () => {
     
     // 2. 翻译描述为英文
     const translatedDescriptions = await translateDescriptions(userInfo.descriptions)
-    // const translatedpersonDescription = await translateDescriptions(userInfo.personDescription)
-    // 2. 翻译个人描述为英文
-    let translatedPersonDescription = userInfo.personDescription
-    if (userInfo.personDescription && userInfo.personDescription.trim()) {
-      try {
-        translatedPersonDescription = await translateToEnglish(userInfo.personDescription)
-      } catch (e) {
-        console.warn('个人描述翻译失败，使用原文')
-        translatedPersonDescription = userInfo.personDescription
-      }
-    }
     
     NativeMessage.info('翻译完成，开始生成图片...')
     
@@ -770,14 +724,12 @@ const generateImages = async () => {
     const generateResponse = await fetch(`${API_BASE_URL}/generate`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json' 
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         session_id: sessionId.value,
-        personPrompts: translatedPersonDescription,
         prompts: translatedDescriptions, // 使用翻译后的英文描述
         style: userInfo.style,
-        userName: userInfo.name.trim(),
         gender: userInfo.gender === 'male' ? 'male' : 'female' // 也改为英文
       })
     })
@@ -962,9 +914,7 @@ const initSpeechRecognition = () => {
       }
       
       // 更新对应输入框的内容
-      if (recordingIndex.value === -2) {
-        userInfo.personDescription = transcript
-      } else if (recordingIndex.value >= 0) {
+      if (recordingIndex.value >= 0) {
         userInfo.descriptions[recordingIndex.value] = transcript
       }
     }
@@ -1928,11 +1878,9 @@ onUnmounted(() => {
   }
 }
 
-
-/* 三块区域比例 */
 .main-content {
   display: grid;
-  grid-template-columns: 0.5fr 470px 1.2fr; 
+  grid-template-columns: 0.5fr 470px 1.2fr;
   gap: 25px;
   max-width: 1800px;
   margin: 0 auto;
@@ -2112,7 +2060,7 @@ onUnmounted(() => {
 .params-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 20px;
 }
 
 .form-item {
@@ -2149,7 +2097,6 @@ onUnmounted(() => {
   box-shadow: 0px 8px #f32b11;
   transition: all 0.1s ease;
   letter-spacing: 1px;
-  margin-top: 5px;
 }
 
 .generate-btn:hover {
@@ -2452,7 +2399,7 @@ onUnmounted(() => {
 
   .desc-list {
     grid-template-columns: 1fr;
-    gap: 5px;
+    gap: 10px;
   }
 
   /* 移动端装饰元素优化 */
@@ -2776,7 +2723,8 @@ onUnmounted(() => {
   /* 移动端自定义下拉菜单优化 */
   .custom-select {
     font-size: 1rem;
-    padding: 0.5em;
+    padding: 0.7em 0.9em;
+    min-height: 42px;
   }
 
   .select-option {
@@ -2981,7 +2929,7 @@ onUnmounted(() => {
   color: #8b4513;
   
   box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 0.3em 0.7em;
+  padding: 0.8em 1em;
   font-size: 1.1rem;
   width: 100%;
   transition: all 0.2s ease;
@@ -2990,6 +2938,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 48px;
 }
 
 .custom-select:hover {
@@ -4091,44 +4040,5 @@ onUnmounted(() => {
     min-width: 20px;
     margin-left: 10px;
   }
-}
-
-.name-gender-row {
-  display: flex;
-  gap: 5px;
-}
-.name-col, .gender-col {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.gender-col {
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-@media (max-width: 768px) {
-  .name-gender-row {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
-
-/* 在<style scoped>末尾添加样式 */
-.co-branding {
-  margin-top: 8px;
-  text-align: center;
-  font-size: 1.1rem;
-  color: #8b4513;
-  font-family: 'CuteFont64', 'Comic Sans MS', 'Microsoft YaHei', cursive, sans-serif;
-  letter-spacing: 1px;
-  text-shadow: 1px 1px 0px #ffd700, 0 0 8px #fff8dc;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  display: inline-block;
-  padding: 2px 18px;
-  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.08);
-  user-select: none;
 }
 </style>
