@@ -192,7 +192,11 @@
           
           <textarea 
             v-model="userInfo.description" 
-            placeholder="请详细描述你想要的漫画场景，比如：我站在樱花树下，穿着校服，背景是蓝天白云，手里拿着一本书，表情很开心..." 
+            placeholder="请详细描述你想要的漫画场景，支持两种分镜方式：
+1. 换行分镜：每行一个场景，换行分镜
+2. 句号分镜：一整段文本，按句号自动分镜
+
+示例：我站在樱花树下，穿着校服，背景是蓝天白云。我手里拿着一本书，表情很开心。突然下起了雨，我在樱花树下避雨。" 
             class="description-textarea" 
             rows="12"
             @input="handleDescriptionInput"
@@ -472,11 +476,35 @@ const generateComic = async () => {
   try {
     NativeMessage.info('正在生成您的专属漫画，请稍候...')
     
+    // 处理描述文本，支持换行分镜和句号分镜
+    let processedDescription = userInfo.description.trim()
+    
+    // 检查是否使用换行分镜
+    if (processedDescription.includes('\n')) {
+      // 已经有换行符，保持现有的换行分镜方式
+      console.log('使用换行分镜模式')
+    } else if (processedDescription.includes('。') || processedDescription.includes('.')) {
+      // 没有换行符但有句号，按句号分镜
+      console.log('使用句号分镜模式')
+      // 按句号分割，同时处理中文和英文句号
+      const sentences = processedDescription
+        .split(/[。．.]+/)  // 分割句号（中文句号、全角句号、英文句号）
+        .map(sentence => sentence.trim())
+        .filter(sentence => sentence.length > 0)
+      
+      // 将分割后的句子用换行连接，这样后端可以按换行处理
+      processedDescription = sentences.join('\n')
+      console.log('句号分镜结果:', sentences)
+    } else {
+      // 既没有换行也没有句号，作为单个场景
+      console.log('单场景模式')
+    }
+    
     // 准备FormData
     const formData = new FormData()
     formData.append('selfie', selfieImage.value)
     formData.append('style', userInfo.style)
-    formData.append('description', userInfo.description.trim())
+    formData.append('description', processedDescription)
     
     console.log('发送请求到Flask后端...')
     console.log('风格:', userInfo.style)
@@ -497,7 +525,18 @@ const generateComic = async () => {
     if (result.success && result.comic_url) {
       generatedComic.value = result.comic_url
       currentSessionId.value = result.session_id
-      NativeMessage.success(`您的专属漫画生成成功！使用了${result.style_used}风格，包含${result.scenes_count}个场景。`)
+      
+      // 构建成功消息
+      let successMessage = `您的专属漫画生成成功！使用了${result.style_used}风格，`
+      successMessage += `采用${result.split_type}方式，包含${result.scenes_count}个场景。`
+      
+      // 如果有场景预览，显示前几个场景
+      if (result.scenes && result.scenes.length > 0) {
+        const scenePreview = result.scenes.slice(0, 2).join('；')
+        successMessage += `场景预览：${scenePreview}...`
+      }
+      
+      NativeMessage.success(successMessage)
     } else {
       throw new Error('服务器返回数据格式错误')
     }
