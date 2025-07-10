@@ -192,7 +192,11 @@
           
           <textarea 
             v-model="userInfo.description" 
-            placeholder="请详细描述你想要的漫画场景，比如：我站在樱花树下，穿着校服，背景是蓝天白云，手里拿着一本书，表情很开心..." 
+            placeholder="请详细描述你想要的漫画场景，支持两种分镜方式：
+1. 换行分镜：每行一个场景，换行分镜
+2. 句号分镜：一整段文本，按句号自动分镜
+
+示例：我站在樱花树下，穿着校服，背景是蓝天白云。我手里拿着一本书，表情很开心。突然下起了雨，我在樱花树下避雨。" 
             class="description-textarea" 
             rows="12"
             @input="handleDescriptionInput"
@@ -322,18 +326,21 @@ const isRecognitionActive = ref(false)
 // 自定义下拉菜单状态
 const isStyleSelectOpen = ref(false)
 
-// 风格选项 - 对应后端支持的风格
+// 风格选项 - 匹配后端支持的风格名称
 const styleOptions = [
   { label: '写实风', value: 'Realistic' },
   { label: '日本漫画风', value: 'Japanese Anime' },
   { label: '数字油画风', value: 'Digital Oil Painting' },
   { label: '迪士尼皮克斯风', value: 'Disney Pixar' },
   { label: '摄影写真风格', value: 'Photography' },
-  { label: '漫画书风格', value: 'Comic Book' },
-  { label: '艺术线条风', value: 'Line Art' },
+  { label: '漫画书风格', value: 'Comic book' },
+  { label: '艺术线条风', value: 'Line art' },
   { label: '黑白电影风', value: 'Film Noir' },
   { label: '3D建模风', value: '3D Model' }
 ]
+
+// Flask后端API配置
+const API_BASE_URL = 'http://localhost:5000/api'
 
 // 原生消息提示系统
 const messages = ref([])
@@ -392,6 +399,13 @@ const closeMessage = (id) => {
 // 文件上传处理
 const handleSelfieUpload = (file) => {
   if (!validateImage(file)) return false
+  
+  // 确保文件有正确的MIME类型
+  if (!file.type.startsWith('image/')) {
+    NativeMessage.error('请上传有效的图片文件！')
+    return false
+  }
+  
   selfieImage.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -441,35 +455,7 @@ const handleDescriptionInput = (event) => {
   // 保留事件处理器以备将来使用
 }
 
-// API配置
-// const API_BASE_URL = 'http://localhost:5001/api'
-const API_BASE_URL = '/AiStory_api'
-
-// 检测文本是否包含中文
-const containsChinese = (text) => /[\u4e00-\u9fa5]/.test(text)
-
-// 翻译中文到英文（使用 Google Translate API）
-const translateToEnglish = async (chineseText) => {
-  if (!chineseText || !containsChinese(chineseText)) {
-    return chineseText
-  }
-  try {
-    const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
-    if (!response.ok) {
-      throw new Error(`翻译API请求失败: ${response.status}`)
-    }
-    const result = await response.json()
-    if (result && result[0] && result[0][0] && result[0][0][0]) {
-      return result[0][0][0]
-    }
-    return chineseText
-  } catch (error) {
-    console.error('翻译失败:', error)
-    return chineseText
-  }
-}
-
-// 生成漫画
+// 生成漫画 - 使用Flask后端API
 const generateComic = async () => {
   // 验证输入
   if (!selfieImage.value) {
@@ -490,52 +476,87 @@ const generateComic = async () => {
   try {
     NativeMessage.info('正在生成您的专属漫画，请稍候...')
     
-    // 多行分镜，每行单独翻译，拼回多行字符串
-    const lines = userInfo.description.trim().split('\n').filter(l => l.trim())
-    const translatedLines = []
-    for (const line of lines) {
-      if (containsChinese(line)) {
-        translatedLines.push(await translateToEnglish(line))
-      } else {
-        translatedLines.push(line)
-      }
-    }
-    const translatedDescription = translatedLines.join('\n')
+    // 处理描述文本，支持换行分镜和句号分镜
+    let processedDescription = userInfo.description.trim()
     
-    // 创建FormData发送请求
+    // 检查是否使用换行分镜
+    if (processedDescription.includes('\n')) {
+      // 已经有换行符，保持现有的换行分镜方式
+      console.log('使用换行分镜模式')
+    } else if (processedDescription.includes('。') || processedDescription.includes('.')) {
+      // 没有换行符但有句号，按句号分镜
+      console.log('使用句号分镜模式')
+      // 按句号分割，同时处理中文和英文句号
+      const sentences = processedDescription
+        .split(/[。．.]+/)  // 分割句号（中文句号、全角句号、英文句号）
+        .map(sentence => sentence.trim())
+        .filter(sentence => sentence.length > 0)
+      
+      // 将分割后的句子用换行连接，这样后端可以按换行处理
+      processedDescription = sentences.join('\n')
+      console.log('句号分镜结果:', sentences)
+    } else {
+      // 既没有换行也没有句号，作为单个场景
+      console.log('单场景模式')
+    }
+    
+    // 准备FormData
     const formData = new FormData()
     formData.append('selfie', selfieImage.value)
     formData.append('style', userInfo.style)
-    formData.append('description', translatedDescription)
-    // 原始中文描述，用于字幕
-    formData.append('description_cn', userInfo.description.trim())
+    formData.append('description', processedDescription)
     
-    // 调用后端API
-    const response = await fetch(`${API_BASE_URL}/generate-comic-strip`, {
+    console.log('发送请求到Flask后端...')
+    console.log('风格:', userInfo.style)
+    console.log('描述:', userInfo.description.trim())
+    
+    // 调用Flask后端API
+    const response = await fetch(`${API_BASE_URL}/generate-comic`, {
       method: 'POST',
       body: formData
     })
     
     const result = await response.json()
     
-    if (response.ok && result.success) {
-      generatedComic.value = result.imageUrl
+    if (!response.ok) {
+      throw new Error(result.error || '请求失败')
+    }
+    
+    if (result.success && result.comic_url) {
+      generatedComic.value = result.comic_url
       currentSessionId.value = result.session_id
-      NativeMessage.success('您的专属漫画生成成功！')
+      
+      // 构建成功消息
+      let successMessage = `您的专属漫画生成成功！使用了${result.style_used}风格，`
+      successMessage += `采用${result.split_type}方式，包含${result.scenes_count}个场景。`
+      
+      // 如果有场景预览，显示前几个场景
+      if (result.scenes && result.scenes.length > 0) {
+        const scenePreview = result.scenes.slice(0, 2).join('；')
+        successMessage += `场景预览：${scenePreview}...`
+      }
+      
+      NativeMessage.success(successMessage)
     } else {
-      throw new Error(result.error || '生成失败')
+      throw new Error('服务器返回数据格式错误')
     }
     
   } catch (error) {
     console.error('生成错误:', error)
+    
     let errorMessage = '漫画生成失败，请重试！'
-    if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
-      errorMessage = '网络连接失败，请检查服务器是否启动'
-    } else if (error.message) {
-      errorMessage = error.message
+    
+    if (error.message) {
+      if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        errorMessage = '网络连接失败，请检查Flask服务器是否启动 (http://localhost:5000)'
+      } else {
+        errorMessage = error.message
+      }
     }
+    
     NativeMessage.error(errorMessage)
     generatedComic.value = null
+    currentSessionId.value = null
   } finally {
     isGenerating.value = false
   }
@@ -543,8 +564,13 @@ const generateComic = async () => {
 
 // 下载功能
 const downloadComic = async () => {
-  if (!generatedComic.value || !currentSessionId.value) {
+  if (!generatedComic.value) {
     NativeMessage.warning('请先生成漫画！')
+    return
+  }
+  
+  if (!currentSessionId.value) {
+    NativeMessage.warning('会话信息丢失，无法下载！')
     return
   }
   
@@ -553,15 +579,15 @@ const downloadComic = async () => {
     if (generatedComic.value.startsWith('data:image')) {
       const link = document.createElement('a')
       link.href = generatedComic.value
-      link.download = 'AI_漫画.png'
+      link.download = `AI_漫画_${currentSessionId.value}.jpg`
       link.click()
       NativeMessage.success('开始下载漫画...')
     } else {
-      // 使用后端下载API
-      const downloadUrl = `${API_BASE_URL}/download/${currentSessionId.value}`
+      // 调用Flask后端下载API
+      const downloadUrl = `${API_BASE_URL}/download-comic/${currentSessionId.value}`
       const link = document.createElement('a')
       link.href = downloadUrl
-      link.download = 'AI_漫画.png'
+      link.download = `AI_漫画_${currentSessionId.value}.jpg`
       link.click()
       NativeMessage.success('开始下载漫画...')
     }
