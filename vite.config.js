@@ -25,11 +25,11 @@ export default defineConfig({
     proxy: {
 
         // 功能1
-        '/StoryDiffusion_api': {
-            target: 'http://localhost:8100',
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/StoryDiffusion_api/, ''),
-        },
+        // '/StoryDiffusion_api': {
+        //     target: 'http://localhost:8100',
+        //     changeOrigin: true,
+        //     rewrite: (path) => path.replace(/^\/StoryDiffusion_api/, ''),
+        // },
         '/Gallery_api': {
             target: 'http://localhost:8100',
             changeOrigin: true,
