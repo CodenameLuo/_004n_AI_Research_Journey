@@ -40,7 +40,7 @@ export default defineConfig({
         '/AiStory_api': {
             target: 'http://localhost:8100',
             changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/AiStory_api/, ''),
+            rewrite: (path) => path.replace(/^\/AiStory_api/, '/api'),
         },
 
         // 功能3
