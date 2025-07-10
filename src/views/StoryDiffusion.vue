@@ -290,28 +290,13 @@
               <Download />
             </el-icon>
           </div>
-          <div 
-            class="corner-button share-btn" 
-            :class="{ 'disabled': !hasValidImages }"
-            @click="shareAllImages" 
-            :title="hasValidImages ? '批量分享' : '请先生成图片'"
-          >
-            <el-icon>
-              <Share />
-            </el-icon>
-          </div>
         </div>
         
         <div class="preview-grid">
           <div v-for="(image, index) in generatedImages" :key="index" class="preview-item">
-            <div class="preview-placeholder" v-if="!image">
-              <el-icon class="placeholder-icon">
-                <Picture />
-              </el-icon>
-              <div class="placeholder-text">等待生成...</div>
-            </div>
-            <div class="preview-image" v-else>
-              <img :src="image" :alt="`生成图片${index + 1}`" />
+            <!-- 已生成的图片 - 最高优先级 -->
+            <div class="preview-image" v-if="image">
+              <img :src="image" :alt="`生成图片${index + 1}`" @load="onImageLoad(index)" @error="onImageError(index)" />
               <div class="image-actions">
                 <el-button size="small" @click="downloadImage(image, index)">
                   <el-icon>
@@ -320,15 +305,59 @@
                 </el-button>
               </div>
             </div>
+            <!-- 生成失败显示 -->
+            <div class="generating-failed" v-else-if="imageStatus[index] && imageStatus[index].includes('失败')">
+              <div class="failed-icon">❌</div>
+              <div class="failed-text">{{ imageStatus[index] }}</div>
+            </div>
+            <!-- 预处理/排队阶段 - 旋转加载圆圈 -->
+            <div class="generating-loading" v-else-if="imageStatus[index] && (imageStatus[index].includes('预处理') || imageStatus[index].includes('排队') || imageStatus[index].includes('处理中'))">
+              <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <div class="loading-status">{{ imageStatus[index] }}</div>
+              </div>
+            </div>
+            <!-- 生成阶段 - 进度条显示 -->
+            <div class="generating-progress" v-else-if="imageStatus[index] && imageStatus[index].includes('生成')">
+              <div class="progress-container">
+                <div class="progress-circle">
+                  <svg class="progress-ring" width="120" height="120">
+                    <circle
+                      class="progress-ring-circle"
+                      stroke="#ff8c42"
+                      stroke-width="8"
+                      fill="transparent"
+                      r="52"
+                      cx="60"
+                      cy="60"
+                      :stroke-dasharray="`${2 * Math.PI * 52}`"
+                      :stroke-dashoffset="`${2 * Math.PI * 52 * (1 - Math.max(imageProgress[index], 0) / 100)}`"
+                      style="--mobile-radius: 42"
+                    />
+                  </svg>
+                  <div class="progress-text">{{ Math.round(Math.max(imageProgress[index], 0)) }}%</div>
+                </div>
+                <div class="progress-status">{{ imageStatus[index] || '生成中...' }}</div>
+              </div>
+            </div>
+            <!-- 其他状态 - 旋转加载圆圈 -->
+            <div class="generating-loading" v-else-if="imageStatus[index]">
+              <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <div class="loading-status">{{ imageStatus[index] }}</div>
+              </div>
+            </div>
+            <!-- 等待生成 -->
+            <div class="preview-placeholder" v-else>
+              <el-icon class="placeholder-icon">
+                <Picture />
+              </el-icon>
+              <div class="placeholder-text">等待生成...</div>
+            </div>
             <div class="preview-label">{{ index === 0 ? '封面' : index }}</div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- 底部：画廊组件 -->
-    <div class="gallery-section">
-      <Gallery ref="galleryRef" />
     </div>
 
     <!-- 原生消息提示容器 -->
@@ -358,11 +387,12 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
-import Gallery from '../components/Gallery.vue'
-import { Plus, Delete, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
+import { Plus, Delete, Picture, MagicStick, Download, Microphone } from '@element-plus/icons-vue'
+// 移除画廊组件引用
+import styleTemplateData from '../assets/style_template.json'
 
-// 画廊组件引用
-const galleryRef = ref(null)
+// API配置 - 改为使用与StyleTransfer相同的API
+const API_KEY = 'sk-JdJqP2CyAUXtqGL36d25AaDa6e9b46868bF45d0a515d7882'
 
 // 响应式数据
 const userInfo = reactive({
@@ -386,6 +416,10 @@ const descriptionImages = ref(Array(8).fill(null).map(() => ({
 // 生成的9张预览图
 const generatedImages = ref(Array(9).fill(null))
 
+// 每个图片的生成进度和状态
+const imageProgress = ref(Array(9).fill(0))
+const imageStatus = ref(Array(9).fill(''))
+
 // 生成状态
 const isGenerating = ref(false)
 
@@ -403,33 +437,59 @@ const hasValidImages = computed(() => {
   return generatedImages.value.some(url => url)
 })
 
-// 风格选项 - 对应后端支持的风格
-const styleOptions = [
-  { label: '写实风', value: '写实风' },
-  { label: '日本漫画风', value: '日本漫画风' },
-  { label: '数字油画风', value: '数字油画风' },
-  { label: '迪士尼皮克斯风', value: '迪士尼皮克斯风' },
-  { label: '摄影写真风格', value: '摄影写真风格' },
-  { label: '漫画书风格', value: '漫画书风格' },
-  { label: '艺术线条风', value: '艺术线条风' },
-  { label: '黑白电影风', value: '黑白电影风' },
-  { label: '3D建模风', value: '3D建模风' }
-]
-
-// 后端API基础URL
-// const API_BASE_URL = 'https://www.ai-study-nku.com/api'
-// const API_BASE_URL = 'http://localhost:5000'
-const API_BASE_URL = '/StoryDiffusion_api'
+// 风格选项 - 从style_template.json加载
+const styleOptions = styleTemplateData.map(style => ({
+  label: style.name,
+  value: style.name
+}))
 
 // 当前会话ID
 const sessionId = ref('')
 
-// 翻译缓存
-const translationCache = new Map()
-
 // 原生消息提示系统
 const messages = ref([])
 let messageId = 0
+
+// 翻译缓存
+const translationCache = new Map()
+
+// 从style_template.json获取风格配置
+const getStyleTemplate = (styleName) => {
+  return styleTemplateData.find(template => template.name === styleName) || {
+    name: styleName,
+    prompt: "{prompt}",
+    negative_prompt: ""
+  }
+}
+
+// 将图片压缩到最长边 768px，并导出为 0.7 质量 JPEG
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const maxSide = 768
+      let { width, height } = img
+      if (width > height && width > maxSide) {
+        height = (maxSide / width) * height
+        width = maxSide
+      } else if (height > maxSide) {
+        width = (maxSide / height) * width
+        height = maxSide
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      // 质量 0.7 可自行调整
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+      resolve({ base64: dataUrl, width, height })
+    }
+    img.onerror = reject
+    // File → blob → objectURL 避免 FileReader 额外内存
+    img.src = URL.createObjectURL(file)
+  })
+}
 
 // 翻译功能 - 将中文描述翻译为英文
 const translateToEnglish = async (chineseText) => {
@@ -486,8 +546,8 @@ const translateToEnglish = async (chineseText) => {
       console.warn('备用翻译服务也失败:', fallbackError)
     }
     
-    console.warn('使用关键词映射翻译，可能不够准确')
-    return result
+    console.warn('使用原始文本，翻译服务不可用')
+    return chineseText
   }
 }
 
@@ -628,6 +688,21 @@ const closeMessage = (id) => {
   }
 }
 
+// 图片加载成功回调
+const onImageLoad = (index) => {
+  console.log(`图片 ${index + 1} 加载成功`)
+  imageStatus.value[index] = '完成'
+  imageProgress.value[index] = 100
+}
+
+// 图片加载错误回调
+const onImageError = (index) => {
+  console.error(`图片 ${index + 1} 加载失败`)
+  imageStatus.value[index] = '图片加载失败'
+  // 清除失效的图片URL
+  generatedImages.value[index] = null
+}
+
 // 文件上传处理
 const handleSelfieUpload = (file) => {
   if (!validateImage(file)) return false
@@ -676,34 +751,142 @@ const removeDescriptionImage = (index) => {
   }
 }
 
-// 上传图片到后端
-const uploadImages = async () => {
-  const formData = new FormData()
-  
-  // 添加自拍照
-  formData.append('portrait', selfieImage.value)
-  
-  // 添加8张参考图片
-  const referenceImages = descriptionImages.value.filter(item => item.image !== null)
-  if (referenceImages.length !== 8) {
-    throw new Error('请上传所有8张参考图片！')
+// 生成单个图片的函数
+const generateSingleImage = async (imageIndex, promptText, selfieBase64, descriptionBase64 = null) => {
+  // 如果状态还未设置，则设置为预处理中（避免重复设置）
+  if (!imageStatus.value[imageIndex] || imageStatus.value[imageIndex] === '预处理中...') {
+    imageProgress.value[imageIndex] = 0
+    imageStatus.value[imageIndex] = '预处理中...'
   }
   
-  referenceImages.forEach((item, index) => {
-    formData.append('reference_images', item.image)
-  })
+  const styleTemplate = getStyleTemplate(userInfo.style)
   
-  const response = await fetch(`${API_BASE_URL}/upload`, {
+  let finalPrompt
+  if (imageIndex === 0) {
+    // 第一张图片：纯自拍照风格转换
+    finalPrompt = styleTemplate.prompt.replace('{prompt}', `a portrait of a ${userInfo.gender === 'male' ? 'boy' : 'girl'} named ${userInfo.name}`)
+  } else {
+    // 后面八张图片：人物场景结合
+    finalPrompt = styleTemplate.prompt.replace('{prompt}', 
+      `${promptText}, featuring a ${userInfo.gender === 'male' ? 'boy' : 'girl'} named ${userInfo.name} in the scene`
+    )
+  }
+
+  const body = {
+    model: 'gpt-4o-image',
+    stream: true,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: finalPrompt },
+          { type: 'image_url', image_url: { url: selfieBase64 } },
+          ...(descriptionBase64 ? [{ type: 'image_url', image_url: { url: descriptionBase64 } }] : [])
+        ],
+      },
+    ],
+  }
+
+  const res = await fetch(`/lingxi/v1/chat/completions`, {
     method: 'POST',
-    body: formData
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify(body),
   })
-  
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || '上传失败')
+
+  if (!res.ok || !res.body) {
+    const txt = await res.text()
+    throw new Error(txt || '接口请求失败')
   }
-  
-  return await response.json()
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let accumulated = ''
+  let chunkCount = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    
+    const chunk = decoder.decode(value, { stream: true })
+    const lines = chunk.split('\n')
+    
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue
+      const payload = line.replace(/^data:\s*/, '')
+      if (payload === '[DONE]') {
+        imageProgress.value[imageIndex] = 100
+        // 如果还没有获取到图片URL，不要设置为完成状态
+        if (!generatedImages.value[imageIndex]) {
+          imageStatus.value[imageIndex] = '处理中...'
+        }
+        return
+      }
+      
+      try {
+        const json = JSON.parse(payload)
+        const contentDelta = json.choices?.[0]?.delta?.content || ''
+        accumulated += contentDelta
+
+        // 队列/预处理提示
+        if (contentDelta.includes('任务正在队列中')) {
+          imageStatus.value[imageIndex] = '排队中...'
+          imageProgress.value[imageIndex] = 0
+        }
+
+        // 检查进度百分比
+        const pctMatch = contentDelta.match(/进度：([\d.]+)%/)
+        if (pctMatch) {
+          imageStatus.value[imageIndex] = '生成中...'
+          imageProgress.value[imageIndex] = Math.min(99, parseFloat(pctMatch[1]))
+        }
+
+        if (contentDelta.includes('图片绘制成功')) {
+          imageStatus.value[imageIndex] = '生成成功'
+        }
+
+        // Fallback：仍然用 chunk 数来估算，避免长时间0%
+        if (!pctMatch && !contentDelta.includes('任务正在队列中')) {
+          chunkCount++
+          // 如果没有明确的进度信息，且不在排队中，慢慢增加进度
+          if (chunkCount % 10 === 0 && imageProgress.value[imageIndex] < 90) {
+            if (imageStatus.value[imageIndex] === '预处理中...') {
+              imageStatus.value[imageIndex] = '生成中...'
+            }
+            imageProgress.value[imageIndex] += 1
+          }
+        }
+
+        // 尝试多种URL匹配模式
+        const urlPatterns = [
+          /https?:\/\/[^\s\])+]+/g,  // 标准URL模式
+          /https?:[^\s)]+/g,         // 原有的模式
+          /"(https?:\/\/[^"]+)"/g,   // 引号包围的URL
+          /\[(https?:\/\/[^\]]+)\]/g // 方括号包围的URL
+        ]
+        
+        for (const pattern of urlPatterns) {
+          const matches = accumulated.match(pattern)
+          if (matches && matches.length > 0) {
+            const imageUrl = matches[matches.length - 1].replace(/["\]]+$/, '') // 清理结尾的引号或括号
+            console.log(`图片 ${imageIndex + 1} 获取到URL (模式: ${pattern}):`, imageUrl)
+            
+            // 验证URL是否为有效的图片URL
+            if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) || imageUrl.includes('image') || imageUrl.includes('picture')) {
+              generatedImages.value[imageIndex] = imageUrl
+              imageProgress.value[imageIndex] = 100
+              imageStatus.value[imageIndex] = '图片已获取'
+              return
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('解析流数据失败', e)
+      }
+    }
+  }
 }
 
 // 生成图片
@@ -742,66 +925,84 @@ const generateImages = async () => {
   
   isGenerating.value = true
   
+  // 重置进度和状态
+  imageProgress.value = Array(9).fill(0)
+  imageStatus.value = Array(9).fill('')
+  generatedImages.value = Array(9).fill(null)
+  
   try {
-    NativeMessage.info('正在上传图片...')
+    NativeMessage.info('正在压缩图片...')
     
-    // 1. 上传图片
-    const uploadResult = await uploadImages()
-    sessionId.value = uploadResult.session_id
+    // 1. 压缩自拍照
+    const { base64: selfieBase64 } = await compressImage(selfieImage.value)
     
-    NativeMessage.info('图片上传成功，正在翻译描述...')
-    
-    // 2. 翻译描述为英文
-    const translatedDescriptions = await translateDescriptions(userInfo.descriptions)
-    // const translatedpersonDescription = await translateDescriptions(userInfo.personDescription)
-    // 2. 翻译个人描述为英文
-    let translatedPersonDescription = userInfo.personDescription
-    if (userInfo.personDescription && userInfo.personDescription.trim()) {
-      try {
-        translatedPersonDescription = await translateToEnglish(userInfo.personDescription)
-      } catch (e) {
-        console.warn('个人描述翻译失败，使用原文')
-        translatedPersonDescription = userInfo.personDescription
+    // 2. 压缩描述图片
+    const descriptionBase64List = []
+    for (let i = 0; i < descriptionImages.value.length; i++) {
+      if (descriptionImages.value[i].image) {
+        const { base64 } = await compressImage(descriptionImages.value[i].image)
+        descriptionBase64List.push(base64)
       }
     }
     
-    NativeMessage.info('翻译完成，开始生成图片...')
+    NativeMessage.info('图片压缩完成，正在翻译描述...')
     
-    // 3. 调用生成接口，使用翻译后的英文描述
-    const generateResponse = await fetch(`${API_BASE_URL}/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({
-        session_id: sessionId.value,
-        personPrompts: translatedPersonDescription,
-        prompts: translatedDescriptions, // 使用翻译后的英文描述
-        style: userInfo.style,
-        userName: userInfo.name.trim(),
-        gender: userInfo.gender === 'male' ? 'male' : 'female' // 也改为英文
-      })
-    })
+    // 3. 翻译描述为英文
+    const translatedDescriptions = await translateDescriptions(userInfo.descriptions)
     
-    if (!generateResponse.ok) {
-      const error = await generateResponse.json()
-      throw new Error(error.error || '生成失败')
+    NativeMessage.success('开始并发生成9张图片...')
+    
+    // 4. 立即显示所有图片都在预处理中
+    for (let i = 0; i < 9; i++) {
+      imageProgress.value[i] = 0
+      imageStatus.value[i] = '预处理中...'
     }
     
-    const generateResult = await generateResponse.json()
+    // 5. 并发生成所有图片
+    const generationPromises = []
     
-    // 4. 处理生成结果 - 使用base64图片
-    generatedImages.value = generateResult.images.map(img => 
-      `data:image/png;base64,${img.base64}`
+    // 第一张图片：纯自拍照风格转换
+    generationPromises.push(
+      generateSingleImage(0, '', selfieBase64, null).catch(error => {
+        console.error(`生成第1张图片失败:`, error)
+        imageStatus.value[0] = '生成失败'
+        NativeMessage.error(`第1张图片生成失败: ${error.message}`)
+      })
     )
     
-    NativeMessage.success('图片生成成功！')
+    // 后面八张图片：人物场景结合
+    for (let i = 0; i < 8; i++) {
+      const imageIndex = i + 1
+      const description = translatedDescriptions[i]
+      const descBase64 = descriptionBase64List[i]
+      
+      generationPromises.push(
+        generateSingleImage(imageIndex, description, selfieBase64, descBase64).catch(error => {
+          console.error(`生成第${imageIndex + 1}张图片失败:`, error)
+          imageStatus.value[imageIndex] = '生成失败'
+          NativeMessage.error(`第${imageIndex + 1}张图片生成失败: ${error.message}`)
+        })
+      )
+    }
+    
+    // 等待所有图片生成完成
+    await Promise.allSettled(generationPromises)
+    
+    // 检查成功生成的图片数量
+    const successCount = generatedImages.value.filter(img => img).length
+    if (successCount > 0) {
+      NativeMessage.success(`成功生成${successCount}张图片！`)
+    } else {
+      NativeMessage.error('所有图片生成都失败了，请重试！')
+    }
     
   } catch (error) {
     console.error('生成错误:', error)
     NativeMessage.error(error.message || '生成失败，请重试！')
     // 重置生成状态
     generatedImages.value = Array(9).fill(null)
+    imageProgress.value = Array(9).fill(0)
+    imageStatus.value = Array(9).fill('')
   } finally {
     isGenerating.value = false
   }
@@ -855,75 +1056,7 @@ const downloadAllImages = () => {
   })
 }
 
-// 分享功能
-const shareAllImages = async () => {
-  // 检查是否禁用状态
-  if (!hasValidImages.value) {
-    NativeMessage.warning('请先生成图片再进行批量分享！')
-    return
-  }
-  
-  const validImages = generatedImages.value.filter(url => url)
-  if (validImages.length === 0) {
-    NativeMessage.warning('没有可分享的图片！')
-    return
-  }
-  
-  // 验证必需信息
-  if (!userInfo.name.trim()) {
-    NativeMessage.warning('请先填写姓名才能分享到画廊！')
-    return
-  }
-  
-  if (!userInfo.style) {
-    NativeMessage.warning('请先选择图片风格才能分享到画廊！')
-    return
-  }
-  
-  try {
-    NativeMessage.info('正在翻译描述并分享到画廊...')
-    
-    // 翻译描述为英文用于后端存储
-    const validDescriptions = userInfo.descriptions.filter(desc => desc.trim())
-    const translatedDescriptions = await translateDescriptions(validDescriptions)
-    
-    // 创建故事数据对象
-    const storyData = {
-      userName: userInfo.name.trim(),
-      style: userInfo.style,
-      images: validImages, // base64图片数据
-      descriptions: translatedDescriptions, // 使用翻译后的英文描述
-      originalDescriptions: validDescriptions // 保留原始中文描述用于前端显示
-    }
-    
-    // 发送到后端API
-    const response = await fetch(`${API_BASE_URL}/stories`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(storyData)
-    })
-    
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || '分享失败')
-    }
-    
-    const result = await response.json()
-    
-    // 通知画廊组件刷新数据
-    if (galleryRef.value && galleryRef.value.refreshGallery) {
-      await galleryRef.value.refreshGallery()
-    }
-    
-    NativeMessage.success(`${userInfo.name}的故事已成功分享到画廊！现在所有用户都能看到你的作品了 🎉`)
-    
-  } catch (error) {
-    console.error('分享到画廊失败:', error)
-    NativeMessage.error(`分享失败: ${error.message}`)
-  }
-}
+
 
 // 自定义下拉菜单方法
 const toggleStyleSelect = () => {
@@ -1105,33 +1238,10 @@ const handleClickOutside = (event) => {
   }
 }
 
-// 检查后端服务状态
-const checkBackendHealth = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/health`)
-    if (response.ok) {
-      const data = await response.json()
-      console.log('后端服务连接成功:', data)
-      return true
-    } else {
-      throw new Error('后端服务响应异常')
-    }
-  } catch (error) {
-    console.error('后端服务连接失败:', error)
-    NativeMessage.warning('后端服务未启动，请先启动Flask后端服务！')
-    return false
-  }
-}
-
-// 组件挂载时初始化语音识别和检查后端
+// 组件挂载时初始化语音识别
 onMounted(async () => {
   initSpeechRecognition()
   document.addEventListener('click', handleClickOutside)
-  
-  // 延迟检查后端服务，给用户时间看到界面
-  setTimeout(() => {
-    checkBackendHealth()
-  }, 1000)
 })
 
 // 组件卸载时清理事件监听
@@ -2329,6 +2439,176 @@ onUnmounted(() => {
   text-align: center;
   text-shadow: 1px 1px 0px #ffd700;
   
+}
+
+/* 加载状态显示样式 */
+.generating-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b4513;
+  
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  border: 8px solid rgba(255, 140, 66, 0.2);
+  border-top: 8px solid #ff8c42;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 140, 66, 0.4));
+}
+
+.loading-status {
+  font-size: 1rem;
+  color: #8b4513;
+  text-align: center;
+  text-shadow: 1px 1px 0px #ffd700;
+  
+  letter-spacing: 0.5px;
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+/* 生成进度显示样式 */
+.generating-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b4513;
+  
+}
+
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.progress-circle {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-ring {
+  transform: rotate(-90deg);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.3s ease;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(255, 140, 66, 0.4));
+}
+
+.progress-text {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ff8c42;
+  text-shadow: 1px 1px 0px #ffd700;
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+.progress-status {
+  font-size: 1rem;
+  color: #8b4513;
+  text-align: center;
+  text-shadow: 1px 1px 0px #ffd700;
+  
+  letter-spacing: 0.5px;
+  animation: statusBlink 1.5s ease-in-out infinite;
+}
+
+/* 失败状态样式 */
+.progress-status:has-text("失败") {
+  color: #dc143c;
+  text-shadow: 1px 1px 0px rgba(220, 20, 60, 0.3);
+  animation: none;
+}
+
+/* 生成失败显示 */
+.generating-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #dc143c;
+  
+}
+
+.failed-icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  color: #dc143c;
+  animation: shake 0.5s ease-in-out;
+}
+
+.failed-text {
+  font-size: 1.1rem;
+  text-align: center;
+  text-shadow: 1px 1px 0px rgba(220, 20, 60, 0.3);
+  
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+@keyframes statusBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .preview-image {
@@ -3603,26 +3883,40 @@ onUnmounted(() => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .gallery-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
+  /* 移动端加载圆圈优化 */
+  .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border-width: 6px;
   }
 
-  .gallery-item {
-    padding: 15px;
+  .loading-status {
+    font-size: 0.9rem;
   }
 
-  .gallery-item .gallery-image {
-    height: 150px;
+  .progress-circle {
+    width: 100px;
+    height: 100px;
   }
 
-  .gallery-item .gallery-info {
-    font-size: 0.8rem;
+  .progress-ring {
+    width: 100px;
+    height: 100px;
   }
 
-  .gallery-item .gallery-actions .el-button {
-    padding: 6px 10px;
-    font-size: 0.8rem;
+  .progress-ring-circle {
+    r: 42;
+    cx: 50;
+    cy: 50;
+    stroke-width: 6;
+  }
+
+  .progress-text {
+    font-size: 1.2rem;
+  }
+
+  .progress-status {
+    font-size: 0.9rem;
   }
 }
 
