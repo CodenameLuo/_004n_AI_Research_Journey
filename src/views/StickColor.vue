@@ -406,6 +406,7 @@ import styleTemplateData from '@/assets/style_template.json'
 const API_CONFIG = {
     // BASE_URL: 'http://localhost:7860',
     BASE_URL: '/StickColor_api',
+    // BASE_URL: 'http://localhost:8100/StickColor_api',
     MODEL_NAME: 'dreamshaper_8' // 可以根据实际情况修改
 }
 

@@ -31,21 +31,21 @@ export default defineConfig({
         //     rewrite: (path) => path.replace(/^\/StoryDiffusion_api/, ''),
         // },
         '/Gallery_api': {
-            target: 'http://localhost:8100',
+            target: 'http://localhost:8101',
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/Gallery_api/, ''),
         },
 
         // 功能2
         '/AiStory_api': {
-            target: 'http://localhost:8100',
+            target: 'http://localhost:8101',
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/AiStory_api/, '/api'),
         },
 
         // 功能3
         '/StickColor_api': {
-            target: 'http://localhost:8100',
+            target: 'http://localhost:8102',
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/StickColor_api/, ''),
         },

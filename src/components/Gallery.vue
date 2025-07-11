@@ -227,6 +227,7 @@ const closeMessage = (id) => {
 // const API_BASE_URL = 'https://www.ai-study-nku.com/api'
 // const API_BASE_URL = 'http://localhost:5000'
 const API_BASE_URL = '/Gallery_api'
+// const API_BASE_URL = 'http://localhost:8100/Gallery_api'
 
 // 画廊图片数据
 const allStories = ref([]) // 所有故事数据
