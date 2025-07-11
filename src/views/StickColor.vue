@@ -266,7 +266,7 @@
                                 </el-button>
                             </div>
                         </div>
-                        <textarea v-model="objectPrompt" placeholder="详细描述你想画的物体，比如：一只可爱的小猫、一朵向日葵、一座城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                        <textarea v-model="objectPrompt" placeholder="详细描述你想画的物体，比如：一只可爱的橘色小猫、一朵向日葵、一座粉色城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                     </div>
 
                     <!-- 颜色描述输入 -->
