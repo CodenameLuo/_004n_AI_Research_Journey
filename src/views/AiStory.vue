@@ -341,7 +341,7 @@ const styleOptions = [
 
 // Flask后端API配置
 // const API_BASE_URL = 'http://localhost:5000/api'
-const API_BASE_URL = '/AiStory_api'
+const API_BASE_URL = '/AiStory_api/api'
 // const API_BASE_URL = 'http://localhost:8100/AiStory_api'
 
 // 原生消息提示系统
