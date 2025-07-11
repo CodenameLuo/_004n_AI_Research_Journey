@@ -293,7 +293,7 @@
                                 </el-button>
                             </div>
                         </div>
-                        <textarea v-model="colorPrompt" placeholder="描述你想要给简笔画涂上什么颜色，比如：鲜艳的红色和黄色、温暖的橙色、清新的蓝绿色..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                        <textarea v-model="colorPrompt" placeholder="描述你想生成的图片？比如：橙色小猫在草地上奔跑、红裙子小女生在跳舞、小王子坐在星空下..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                     </div>
 
                     <!-- 风格选择 -->
