@@ -85,7 +85,7 @@
     <!-- 功能卡片区域 -->
     <div class="features-section">
       <div class="features-container">
-        <!-- AI研学卡片 -->
+        <!-- 我的AI旅记卡片 -->
         <div class="feature-card story-diffusion-card" @click="navigateTo('/story-diffusion')">
           <div class="card-decoration">
             <div class="card-star star-1">✦</div>
@@ -94,7 +94,7 @@
           </div>
           <div class="card-content">
             <div class="card-icon">📖</div>
-            <h3 class="card-title">AI研学</h3>
+            <h3 class="card-title">我的AI旅记</h3>
             <p class="card-description">用AI创造属于你的童话故事</p>
             <div class="card-features">
               <span class="feature-tag">多图上传</span>
