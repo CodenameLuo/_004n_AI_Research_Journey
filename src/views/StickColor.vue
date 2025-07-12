@@ -335,7 +335,8 @@ import { EditPen, Delete, Refresh, Picture, MagicStick, Download, Share, Microph
 
 // API 配置
 const API_CONFIG = {
-    BASE_URL: 'http://localhost:7860',
+    // BASE_URL: 'http://localhost:7860',
+    BASE_URL: '/StickColor_api',
     MODEL_NAME: 'dreamshaper_8' // 可以根据实际情况修改
 }
 
