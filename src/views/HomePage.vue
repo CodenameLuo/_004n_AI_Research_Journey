@@ -754,7 +754,7 @@ const burstBubble = (event) => {
   max-width: 1800px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 40px;
   padding: 0 20px;
 }
@@ -772,6 +772,7 @@ const burstBubble = (event) => {
   cursor: pointer;
   transition: all 0.4s cubic-bezier(.4, 2, .6, 1);
   overflow: hidden;
+  min-width: 300px;
 }
 
 .feature-card::before {
@@ -1118,10 +1119,29 @@ const burstBubble = (event) => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
+/* 大屏幕：保持4列 (默认) */
+
+/* 中等屏幕：3列 */
+@media (max-width: 1400px) and (min-width: 1001px) {
   .features-container {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
+    gap: 35px;
+  }
+  
+  .feature-card {
+    min-width: 280px;
+  }
+}
+
+/* 小屏幕：2列 */
+@media (max-width: 1000px) and (min-width: 701px) {
+  .features-container {
+    grid-template-columns: repeat(2, 1fr);
     gap: 30px;
+  }
+  
+  .feature-card {
+    min-width: 250px;
   }
   
   .title {
@@ -1133,7 +1153,8 @@ const burstBubble = (event) => {
   }
 }
 
-@media (max-width: 768px) {
+/* 超小屏幕：1列 */
+@media (max-width: 700px) {
   .home-page {
     padding: 15px;
     font-size: 14px;
@@ -1166,6 +1187,7 @@ const burstBubble = (event) => {
   .feature-card {
     padding: 30px 25px;
     border-width: 4px;
+    min-width: unset;
   }
   
   .card-icon {
