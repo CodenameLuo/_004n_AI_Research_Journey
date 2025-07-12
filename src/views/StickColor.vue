@@ -187,45 +187,11 @@
                             </div>
                             <textarea v-model="colorPrompt" placeholder="描述你想要给简笔画涂上什么颜色，比如：鲜艳的红色和黄色、温暖的橙色、清新的蓝绿色..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                         </div>
-
-                        <!-- 风格选择 -->
-                        <div class="input-group">
-                            <div class="input-header">
-                                <label>你想要的风格？</label>
-                            </div>
-                            <div class="custom-select-wrapper">
-                                <div 
-                                    class="custom-select" 
-                                    :class="{ 'is-open': isStyleSelectOpen }"
-                                    @click="toggleStyleSelect"
-                                >
-                                    <div class="select-display">
-                                        {{ selectedStyle ? selectedStyle.name : '请选择图片风格' }}
-                                    </div>
-                                    <div class="select-arrow">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M7 10l5 5 5-5z"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="select-options" v-show="isStyleSelectOpen">
-                                    <div 
-                                        class="select-option"
-                                        :class="{ 'is-selected': selectedStyle && selectedStyle.name === style.name }"
-                                        v-for="style in styleTemplates" 
-                                        :key="style.name"
-                                        @click="selectStyle(style)"
-                                    >
-                                        {{ style.name }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- 移动端生成按钮 -->
                     <div class="generate-btn-wrapper">
-                        <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing || !objectPrompt.trim() || !selectedStyle" class="generate-btn">
+                        <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing || !objectPrompt.trim()" class="generate-btn">
                             <el-icon>
                                 <MagicStick />
                             </el-icon>
@@ -295,45 +261,11 @@
                         </div>
                         <textarea v-model="colorPrompt" placeholder="描述你想要给简笔画涂上什么颜色，比如：鲜艳的红色和黄色、温暖的橙色、清新的蓝绿色..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                     </div>
-
-                    <!-- 风格选择 -->
-                    <div class="input-group">
-                        <div class="input-header">
-                            <label>你想要的风格？</label>
-                        </div>
-                        <div class="custom-select-wrapper">
-                            <div 
-                                class="custom-select" 
-                                :class="{ 'is-open': isStyleSelectOpen }"
-                                @click="toggleStyleSelect"
-                            >
-                                <div class="select-display">
-                                    {{ selectedStyle ? selectedStyle.name : '请选择图片风格' }}
-                                </div>
-                                <div class="select-arrow">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="select-options" v-show="isStyleSelectOpen">
-                                <div 
-                                    class="select-option"
-                                    :class="{ 'is-selected': selectedStyle && selectedStyle.name === style.name }"
-                                    v-for="style in styleTemplates" 
-                                    :key="style.name"
-                                    @click="selectStyle(style)"
-                                >
-                                    {{ style.name }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- PC端生成按钮 -->
                 <div class="generate-btn-wrapper">
-                    <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing || !objectPrompt.trim() || !selectedStyle" class="generate-btn">
+                    <el-button type="primary" size="large" @click="generateImage" :loading="isGenerating" :disabled="!hasDrawing || !objectPrompt.trim()" class="generate-btn">
                         <el-icon>
                             <MagicStick />
                         </el-icon>
@@ -400,7 +332,6 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { EditPen, Delete, Refresh, Picture, MagicStick, Download, Share, Microphone } from '@element-plus/icons-vue'
-import styleTemplateData from '@/assets/style_template.json'
 
 // API 配置
 const API_CONFIG = {
@@ -420,13 +351,9 @@ const hasDrawing = ref(false)
 const lastX = ref(0)
 const lastY = ref(0)
 
-// 提示词 - 修改为三个独立的输入
+// 提示词 - 修改为两个独立的输入
 const objectPrompt = ref('')  // 物体描述
 const colorPrompt = ref('')   // 颜色描述
-const selectedStyle = ref(null)  // 选择的风格
-
-// 风格模板数据
-const styleTemplates = ref(styleTemplateData)
 
 // 生成状态
 const isGenerating = ref(false)
@@ -438,9 +365,6 @@ const recordingType = ref('') // 'object', 'color'
 const recognition = ref(null)
 const isRecognitionSupported = ref(false)
 const isRecognitionActive = ref(false)
-
-// 风格选择下拉菜单状态
-const isStyleSelectOpen = ref(false)
 
 // 原生消息提示系统
 const messages = ref([])
@@ -710,17 +634,6 @@ const clearColorPrompt = () => {
     }
 }
 
-// 风格选择相关方法
-const toggleStyleSelect = () => {
-    isStyleSelectOpen.value = !isStyleSelectOpen.value
-}
-
-const selectStyle = (style) => {
-    selectedStyle.value = style
-    isStyleSelectOpen.value = false
-    NativeMessage.info(`已选择风格：${style.name}`)
-}
-
 // 处理提示词输入
 const handlePromptInput = (event) => {
     // 保留事件处理器以备将来使用
@@ -763,11 +676,6 @@ const generateImage = async () => {
         return
     }
 
-    if (!selectedStyle.value) {
-        NativeMessage.warning('请选择图片风格！')
-        return
-    }
-
     isGenerating.value = true
 
     try {
@@ -776,7 +684,7 @@ const generateImage = async () => {
         // 获取画布图像数据
         const imgData = canvas.value.toDataURL("image/png")
 
-        // 构建完整的提示词：物体描述 + 颜色描述 + 风格模板
+        // 构建完整的提示词：物体描述 + 颜色描述
         let fullPrompt = objectPrompt.value.trim()
         
         // 添加颜色描述（如果有）
@@ -784,12 +692,11 @@ const generateImage = async () => {
             fullPrompt += ', ' + colorPrompt.value.trim()
         }
 
-        // 使用选择的风格模板构建最终提示词
-        const styleTemplate = selectedStyle.value.prompt
-        const userPrompt = await smartTranslatePrompt(styleTemplate.replace('{prompt}', fullPrompt))
+        // 直接翻译用户的提示词
+        const userPrompt = await smartTranslatePrompt(fullPrompt)
 
-        // 使用风格模板的负面提示词
-        const negativePrompt = selectedStyle.value.negative_prompt || "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
+        // 使用通用的负面提示词
+        const negativePrompt = "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
 
         // 第一步：设置模型（可选）
         try {
@@ -805,13 +712,12 @@ const generateImage = async () => {
         // 获取可用的 ControlNet 模型
         const controlNetModel = await getAvailableControlNetModel()
 
-
         // 第二步：构建 img2img 请求参数
         const payload = {
             init_images: [imgData],
             prompt: userPrompt,
             negative_prompt: negativePrompt,
-            steps: 30,
+            steps: 40,
             cfg_scale: 7.5,
             width: 512,
             height: 512,
@@ -884,7 +790,7 @@ const generateImage = async () => {
         // 设置生成的图片
         generatedImage.value = "data:image/png;base64," + result.images[0]
 
-        NativeMessage.success(`图片生成成功！使用了${selectedStyle.value.name}风格`)
+        NativeMessage.success('图片生成成功！')
 
     } catch (error) {
         console.error('生成错误:', error)
@@ -1149,13 +1055,7 @@ const burstBubble = (event) => {
     }, 300)
 }
 
-// 点击外部关闭下拉菜单
-const handleClickOutside = (event) => {
-    const selectWrapper = event.target.closest('.custom-select-wrapper')
-    if (!selectWrapper && isStyleSelectOpen.value) {
-        isStyleSelectOpen.value = false
-    }
-}
+// 移除风格选择相关的点击外部关闭逻辑 - 不再需要
 
 // 窗口大小变化时重新调整画布
 const handleResize = () => {
@@ -1197,13 +1097,11 @@ onMounted(() => {
     initCanvas()
     initSpeechRecognition()
     window.addEventListener('resize', handleResize)
-    document.addEventListener('click', handleClickOutside)
 })
 
 // 组件卸载时清理事件监听
 onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
-    document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -3236,89 +3134,5 @@ onUnmounted(() => {
 
 :deep(.el-icon) {
     font-weight: 800;
-}
-
-/* 自定义下拉选择器样式 */
-.custom-select-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-.custom-select {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1em 1.2em;
-    background: #fff8dc;
-    border: 4px solid #f7a985;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: #8b4513;
-    font-size: 1rem;
-    letter-spacing: 0.5px;
-    box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
-    user-select: none;
-}
-
-.custom-select:hover {
-    border-color: #ffb347;
-    background: #fffacd;
-}
-
-.custom-select.is-open {
-    border-color: #ff8c42;
-    box-shadow: 0 0 0 4px #ffe4b5, 0 2px 6px #ffd700;
-}
-
-.select-display {
-    flex: 1;
-    text-align: left;
-}
-
-.select-arrow {
-    margin-left: 10px;
-    color: #8b4513;
-    transition: transform 0.2s ease;
-}
-
-.custom-select.is-open .select-arrow {
-    transform: rotate(180deg);
-}
-
-.select-options {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: #fff8dc;
-    border: 4px solid #f7a985;
-    border-top: none;
-    border-radius: 0 0 20px 20px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.select-option {
-    padding: 0.8em 1.2em;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: #8b4513;
-    font-size: 1rem;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid rgba(247, 169, 133, 0.3);
-}
-
-.select-option:hover {
-    background: #ffe4b5;
-    color: #ff6347;
-}
-
-.select-option.is-selected {
-    background: #ffb347;
-    color: #8b4513;
-    font-weight: 600;
 }
 </style>
