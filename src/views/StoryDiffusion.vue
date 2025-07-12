@@ -185,44 +185,12 @@
               </div>
             </div>
           </div>
-          <div class="form-item">
-            <label>图片描述</label>
-            <div class="desc-list">
-                          <div v-for="(desc, idx) in userInfo.descriptions" :key="idx" class="description-wrapper">
-              <div class="description-number">
-                <div class="number-text">{{ idx + 1 }}</div>
-                <div 
-                  class="voice-input-btn" 
-                  :class="{ 'recording': recordingIndex === idx }"
-                  @mousedown="startRecording(idx)"
-                  @mouseup="stopRecording"
-                  @mouseleave="stopRecording"
-                  @touchstart.passive="startRecording(idx)"
-                  @touchend.passive="stopRecording"
-                  @touchcancel.passive="stopRecording"
-                  :title="recordingIndex === idx ? '录音中...' : '按住说话'"
-                >
-                  <el-icon v-if="recordingIndex !== idx">
-                    <Microphone />
-                  </el-icon>
-                  <div v-else class="recording-indicator">
-                    <div class="pulse-ring"></div>
-                    <el-icon>
-                      <Microphone />
-                    </el-icon>
-                  </div>
-                </div>
-              </div>
-              <textarea v-model="userInfo.descriptions[idx]" :placeholder="`第${idx + 1}张图片描述`" class="cartoon-textarea" rows="2"></textarea>
-            </div>
-            </div>
-          </div>
           <el-button 
             type="primary" 
             size="large" 
             @click="generateImages" 
             :loading="isGenerating" 
-            :disabled="!selfieImage || descriptionImages.filter(item => item.image).length !== 8 || userInfo.descriptions.filter(desc => desc.trim()).length !== 8"
+            :disabled="!selfieImage || descriptionImages.filter(item => item.image).length !== 8"
             class="generate-btn"
           >
             <el-icon>
@@ -244,7 +212,7 @@
           <div 
             class="corner-button download-btn" 
             :class="{ 'disabled': !hasValidImages }"
-            @click="downloadAllImages" 
+            @click="showDownloadDialog" 
             :title="hasValidImages ? '批量下载' : '请先生成图片'"
           >
             <el-icon>
@@ -254,7 +222,13 @@
         </div>
         
         <div class="preview-grid">
-          <div v-for="(image, index) in generatedImages" :key="index" class="preview-item">
+          <div v-for="(image, index) in generatedImages" :key="index" class="preview-item" 
+               :draggable="canDrag && image" 
+               @dragstart="handleDragStart(index, $event)"
+               @dragend="handleDragEnd"
+               @dragover.prevent
+               @drop="handleDrop(index, $event)"
+               :class="{ 'dragging': draggedIndex === index, 'drag-over': dragOverIndex === index, 'draggable': canDrag && image }">
             <!-- 已生成的图片 - 最高优先级 -->
             <div class="preview-image" v-if="image">
               <img :src="image" :alt="`生成图片${index + 1}`" @load="onImageLoad(index)" @error="onImageError(index)" />
@@ -321,6 +295,34 @@
       </div>
     </div>
 
+    <!-- 下载选择弹窗 -->
+    <div v-if="showDownloadModal" class="download-modal-overlay" @click="closeDownloadModal">
+      <div class="download-modal" @click.stop>
+        <div class="modal-header">
+          <h3>🎯 选择下载方式</h3>
+          <div class="modal-close" @click="closeDownloadModal">✕</div>
+        </div>
+        <div class="modal-content">
+          <div class="download-options">
+            <div class="download-option" @click="downloadAllImages">
+              <div class="option-icon">📁</div>
+              <div class="option-content">
+                <div class="option-title">单张全部下载</div>
+                <div class="option-desc">分别下载每张图片</div>
+              </div>
+            </div>
+            <div class="download-option" @click="downloadGridImage">
+              <div class="option-icon">🔲</div>
+              <div class="option-content">
+                <div class="option-title">拼接九宫格下载</div>
+                <div class="option-desc">将9张图片拼接为一张九宫格</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 原生消息提示容器 -->
     <div class="native-message-container">
       <div 
@@ -360,7 +362,7 @@ const userInfo = reactive({
   name: '',
   gender: '',
   style: '',
-  descriptions: Array(8).fill('') // 8个描述
+  descriptions: Array(8).fill('') // 8个描述，但不在前端显示
 })
 
 // 自拍照
@@ -392,9 +394,21 @@ const isRecognitionActive = ref(false)
 // 自定义下拉菜单状态
 const isStyleSelectOpen = ref(false)
 
+// 下载弹窗状态
+const showDownloadModal = ref(false)
+
+// 拖拽相关状态
+const draggedIndex = ref(-1)
+const dragOverIndex = ref(-1)
+
 // 计算是否有有效的图片
 const hasValidImages = computed(() => {
   return generatedImages.value.some(url => url)
+})
+
+// 计算是否可以拖拽
+const canDrag = computed(() => {
+  return generatedImages.value.filter(url => url).length > 1
 })
 
 // 风格选项 - 从style_template.json加载
@@ -449,153 +463,6 @@ const compressImage = (file) => {
     // File → blob → objectURL 避免 FileReader 额外内存
     img.src = URL.createObjectURL(file)
   })
-}
-
-// 翻译功能 - 将中文描述翻译为英文
-const translateToEnglish = async (chineseText) => {
-  // 检查缓存
-  if (translationCache.has(chineseText)) {
-    return translationCache.get(chineseText)
-  }
-  
-  try {
-    // 主要翻译服务: MyMemory API
-    const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chineseText)}&langpair=zh|en`)
-    
-    if (!response.ok) {
-      throw new Error('Primary translation API request failed')
-    }
-    
-    const data = await response.json()
-    
-    if (data.responseStatus === 200 && data.responseData) {
-      const translatedText = data.responseData.translatedText
-      // 缓存翻译结果
-      translationCache.set(chineseText, translatedText)
-      return translatedText
-    } else {
-      throw new Error('Primary translation failed')
-    }
-  } catch (error) {
-    console.warn('主要翻译服务失败，尝试备用方案:', error)
-    
-    try {
-      // 备用翻译服务: LibreTranslate 
-      const fallbackResponse = await fetch('https://libretranslate.de/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          q: chineseText,
-          source: 'zh',
-          target: 'en',
-          format: 'text'
-        })
-      })
-      
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json()
-        if (fallbackData.translatedText) {
-          const translatedText = fallbackData.translatedText
-          translationCache.set(chineseText, translatedText)
-          return translatedText
-        }
-      }
-    } catch (fallbackError) {
-      console.warn('备用翻译服务也失败:', fallbackError)
-    }
-    
-    console.warn('使用原始文本，翻译服务不可用')
-    return chineseText
-  }
-}
-
-// 批量翻译描述
-const translateDescriptions = async (descriptions) => {
-  try {
-    const validDescriptions = descriptions.filter(desc => desc.trim())
-    
-    if (validDescriptions.length === 0) {
-      return descriptions
-    }
-    
-    // 创建一个进度消息ID，用于更新同一个消息
-    let progressMessageId = null
-    
-    const translatedDescriptions = []
-    
-    for (let i = 0; i < descriptions.length; i++) {
-      const desc = descriptions[i]
-      if (!desc.trim()) {
-        translatedDescriptions.push(desc)
-        continue
-      }
-      
-      try {
-        // 更新进度消息（如果存在则更新，否则创建新的）
-        const validIndex = validDescriptions.findIndex(vd => vd === desc) + 1
-        const progressText = `翻译进度: ${validIndex}/${validDescriptions.length}`
-        
-        if (progressMessageId !== null) {
-          // 更新现有消息
-          const messageIndex = messages.value.findIndex(m => m.id === progressMessageId)
-          if (messageIndex > -1) {
-            messages.value[messageIndex].content = progressText
-          }
-        } else {
-          // 创建新的进度消息
-          progressMessageId = ++messageId
-          const message = {
-            id: progressMessageId,
-            content: progressText,
-            type: 'info',
-            visible: true
-          }
-          messages.value.push(message)
-        }
-        
-        const translated = await translateToEnglish(desc)
-        translatedDescriptions.push(translated)
-        
-        // 添加短暂延迟避免API限制
-        if (i < descriptions.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200))
-        }
-      } catch (error) {
-        console.warn(`翻译第${i + 1}条描述失败:`, error)
-        translatedDescriptions.push(desc) // 使用原始文本
-      }
-    }
-    
-    // 隐藏进度消息
-    if (progressMessageId !== null) {
-      const progressIndex = messages.value.findIndex(m => m.id === progressMessageId)
-      if (progressIndex > -1) {
-        messages.value[progressIndex].visible = false
-        setTimeout(() => {
-          const removeIndex = messages.value.findIndex(m => m.id === progressMessageId)
-          if (removeIndex > -1) {
-            messages.value.splice(removeIndex, 1)
-          }
-        }, 300)
-      }
-    }
-    
-    const translatedCount = translatedDescriptions.filter((desc, i) => 
-      desc !== descriptions[i] && descriptions[i].trim()
-    ).length
-    
-    if (translatedCount > 0) {
-      NativeMessage.success(`成功翻译${translatedCount}条描述！`)
-    }
-    
-    return translatedDescriptions
-  } catch (error) {
-    console.warn('批量翻译失败:', error)
-    NativeMessage.warning('翻译服务暂时不可用，将使用原始描述')
-    return descriptions
-  }
 }
 
 // 显示消息的方法
@@ -735,6 +602,9 @@ const generateSingleImage = async (imageIndex, promptText, selfieBase64, descrip
       `${promptText}, featuring a ${userInfo.gender === 'male' ? 'boy' : 'girl'} named ${userInfo.name} in the scene`
     )
   }
+  
+  // 在所有prompt后添加正方形比例要求
+  finalPrompt = `${finalPrompt}. IMPORTANT: Generate as a perfect square image with 1:1 aspect ratio. The image dimensions should be equal width and height (square format), not rectangular.`
 
   const body = {
     model: 'gpt-4o-image',
@@ -749,6 +619,13 @@ const generateSingleImage = async (imageIndex, promptText, selfieBase64, descrip
         ],
       },
     ],
+    // 添加图片生成参数，确保正方形比例
+    max_tokens: 4000,
+    temperature: 0.7,
+    // 如果API支持size参数，指定正方形尺寸
+    ...(typeof window !== 'undefined' && {
+      size: "1024x1024"  // 常见的正方形尺寸
+    })
   }
 
   const res = await fetch(`/lingxi/v1/chat/completions`, {
@@ -873,13 +750,6 @@ const generateImages = async () => {
     return
   }
   
-  // 检查是否所有描述都已填写
-  const emptyDescriptions = userInfo.descriptions.filter(desc => !desc.trim())
-  if (emptyDescriptions.length > 0) {
-    NativeMessage.warning('请填写所有图片描述！')
-    return
-  }
-  
   // 检查是否上传了所有图片
   const uploadedImages = descriptionImages.value.filter(item => item.image !== null)
   if (uploadedImages.length !== 8) {
@@ -909,10 +779,9 @@ const generateImages = async () => {
       }
     }
     
-    NativeMessage.info('图片压缩完成，正在翻译描述...')
-    
-    // 3. 翻译描述为英文
-    const translatedDescriptions = await translateDescriptions(userInfo.descriptions)
+    // 3. 使用固定的描述："将人物与地标点融合"
+    const fixedDescription = "将人物与地标点融合"
+    const fixedDescriptions = Array(8).fill(fixedDescription)
     
     NativeMessage.success('开始并发生成9张图片...')
     
@@ -937,7 +806,7 @@ const generateImages = async () => {
     // 后面八张图片：人物场景结合
     for (let i = 0; i < 8; i++) {
       const imageIndex = i + 1
-      const description = translatedDescriptions[i]
+      const description = fixedDescriptions[i]
       const descBase64 = descriptionBase64List[i]
       
       generationPromises.push(
@@ -998,13 +867,22 @@ const downloadImage = (url, index) => {
   }
 }
 
-const downloadAllImages = () => {
-  // 检查是否禁用状态
+// 显示下载弹窗
+const showDownloadDialog = () => {
   if (!hasValidImages.value) {
-    NativeMessage.warning('请先生成图片再进行批量下载！')
+    NativeMessage.warning('请先生成图片再进行下载！')
     return
   }
-  
+  showDownloadModal.value = true
+}
+
+// 关闭下载弹窗
+const closeDownloadModal = () => {
+  showDownloadModal.value = false
+}
+
+// 单张全部下载
+const downloadAllImages = () => {
   const validImages = generatedImages.value.filter(url => url)
   if (validImages.length === 0) {
     NativeMessage.warning('没有可下载的图片！')
@@ -1018,9 +896,141 @@ const downloadAllImages = () => {
       setTimeout(() => downloadImage(url, index), index * 100)
     }
   })
+  closeDownloadModal()
 }
 
+// 拼接九宫格下载
+const downloadGridImage = async () => {
+  const validImages = generatedImages.value.filter(url => url)
+  if (validImages.length === 0) {
+    NativeMessage.warning('没有可下载的图片！')
+    return
+  }
+  
+  try {
+    NativeMessage.info('正在生成九宫格图片，请稍候...')
+    
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    
+    // 设置画布大小 (3x3 网格)
+    const gridSize = 3
+    const imageSize = 400 // 每个图片的大小
+    canvas.width = gridSize * imageSize
+    canvas.height = gridSize * imageSize
+    
+    // 填充背景色
+    ctx.fillStyle = '#fff8dc'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // 加载所有图片
+    const loadImage = (src) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = src
+      })
+    }
+    
+    const imagePromises = generatedImages.value.map(async (url, index) => {
+      if (url) {
+        try {
+          const img = await loadImage(url)
+          return { img, index }
+        } catch (error) {
+          console.warn(`加载图片 ${index + 1} 失败:`, error)
+          return null
+        }
+      }
+      return null
+    })
+    
+    const results = await Promise.allSettled(imagePromises)
+    
+         // 绘制图片到画布
+     results.forEach((result, index) => {
+       if (result.status === 'fulfilled' && result.value) {
+         const { img } = result.value
+         const row = Math.floor(index / gridSize)
+         const col = index % gridSize
+         
+         // 计算位置
+         const x = col * imageSize
+         const y = row * imageSize
+         
+         // 绘制图片
+         ctx.drawImage(img, x, y, imageSize, imageSize)
+         
+         // 添加边框
+         ctx.strokeStyle = '#f7a985'
+         ctx.lineWidth = 4
+         ctx.strokeRect(x, y, imageSize, imageSize)
+       }
+     })
+    
+    // 转换为图片并下载
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `${userInfo.name || '故事'}_九宫格.png`
+      link.click()
+      URL.revokeObjectURL(link.href)
+      
+      NativeMessage.success('九宫格图片已生成并下载！')
+    }, 'image/png')
+    
+  } catch (error) {
+    console.error('生成九宫格失败:', error)
+    NativeMessage.error('生成九宫格失败，请重试！')
+  } finally {
+    closeDownloadModal()
+  }
+}
 
+// 拖拽功能
+const handleDragStart = (index, event) => {
+  if (!canDrag.value || !generatedImages.value[index]) return
+  
+  draggedIndex.value = index
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', index.toString())
+}
+
+const handleDragEnd = () => {
+  draggedIndex.value = -1
+  dragOverIndex.value = -1
+}
+
+const handleDrop = (targetIndex, event) => {
+  event.preventDefault()
+  
+  const sourceIndex = parseInt(event.dataTransfer.getData('text/plain'))
+  
+  if (sourceIndex === targetIndex || !generatedImages.value[sourceIndex] || !generatedImages.value[targetIndex]) {
+    return
+  }
+  
+  // 交换图片位置
+  const temp = generatedImages.value[sourceIndex]
+  generatedImages.value[sourceIndex] = generatedImages.value[targetIndex]
+  generatedImages.value[targetIndex] = temp
+  
+  // 交换状态
+  const tempStatus = imageStatus.value[sourceIndex]
+  imageStatus.value[sourceIndex] = imageStatus.value[targetIndex]
+  imageStatus.value[targetIndex] = tempStatus
+  
+  const tempProgress = imageProgress.value[sourceIndex]
+  imageProgress.value[sourceIndex] = imageProgress.value[targetIndex]
+  imageProgress.value[targetIndex] = tempProgress
+  
+  draggedIndex.value = -1
+  dragOverIndex.value = -1
+  
+  NativeMessage.success('图片位置已交换！')
+}
 
 // 自定义下拉菜单方法
 const toggleStyleSelect = () => {
@@ -1030,135 +1040,6 @@ const toggleStyleSelect = () => {
 const selectStyle = (value) => {
   userInfo.style = value
   isStyleSelectOpen.value = false
-}
-
-// 语音识别功能初始化
-const initSpeechRecognition = () => {
-  try {
-    // 检查浏览器支持
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      isRecognitionSupported.value = false
-      console.warn('当前浏览器不支持语音识别功能')
-      return
-    }
-
-    isRecognitionSupported.value = true
-    recognition.value = new SpeechRecognition()
-    
-    // 配置语音识别
-    recognition.value.continuous = false
-    recognition.value.interimResults = true
-    recognition.value.lang = 'zh-CN'
-    recognition.value.maxAlternatives = 1
-
-    // 识别结果处理
-    recognition.value.onresult = (event) => {
-      let transcript = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript
-      }
-      
-      // 更新对应输入框的内容
-      if (recordingIndex.value >= 0) {
-        userInfo.descriptions[recordingIndex.value] = transcript
-      }
-    }
-
-    // 识别结束处理
-    recognition.value.onend = () => {
-      recordingIndex.value = -1
-      isRecognitionActive.value = false
-    }
-
-    // 错误处理
-    recognition.value.onerror = (event) => {
-      console.error('语音识别错误:', event.error)
-      recordingIndex.value = -1
-      isRecognitionActive.value = false
-      
-      switch (event.error) {
-        case 'no-speech':
-          NativeMessage.warning('没有检测到语音输入')
-          break
-        case 'network':
-          NativeMessage.error('网络错误，请检查网络连接')
-          break
-        case 'not-allowed':
-          NativeMessage.error('麦克风权限被拒绝，请允许使用麦克风')
-          break
-        default:
-          NativeMessage.error('语音识别失败，请重试')
-      }
-    }
-
-    // 开始识别处理
-    recognition.value.onstart = () => {
-      console.log('开始语音识别')
-      isRecognitionActive.value = true
-    }
-
-  } catch (error) {
-    console.error('初始化语音识别失败:', error)
-    isRecognitionSupported.value = false
-  }
-}
-
-// 开始录音
-const startRecording = (index) => {
-  if (!isRecognitionSupported.value) {
-    NativeMessage.warning('当前浏览器不支持语音输入功能')
-    return
-  }
-
-  // 防止重复启动
-  if (isRecognitionActive.value || recordingIndex.value === index) {
-    return
-  }
-
-  // 如果正在录制其他的，先停止
-  if (recordingIndex.value >= 0) {
-    stopRecording()
-    // 给一点时间让之前的识别完全停止
-    setTimeout(() => {
-      startRecordingInternal(index)
-    }, 100)
-  } else {
-    startRecordingInternal(index)
-  }
-}
-
-// 内部启动录音方法
-const startRecordingInternal = (index) => {
-  recordingIndex.value = index
-  
-  try {
-    recognition.value.start()
-    NativeMessage.info('开始语音输入，松开停止')
-  } catch (error) {
-    console.error('启动语音识别失败:', error)
-    recordingIndex.value = -1
-    isRecognitionActive.value = false
-    NativeMessage.error('语音输入启动失败')
-  }
-}
-
-// 停止录音
-const stopRecording = () => {
-  if (recordingIndex.value >= 0 && recognition.value && isRecognitionActive.value) {
-    try {
-      recognition.value.stop()
-    } catch (error) {
-      console.error('停止语音识别失败:', error)
-      // 即使出错也要重置状态
-      recordingIndex.value = -1
-      isRecognitionActive.value = false
-    }
-  } else {
-    // 直接重置状态
-    recordingIndex.value = -1
-    isRecognitionActive.value = false
-  }
 }
 
 // 泡泡破裂效果
@@ -1200,9 +1081,8 @@ const handleClickOutside = (event) => {
   }
 }
 
-// 组件挂载时初始化语音识别
+// 组件挂载
 onMounted(async () => {
-  initSpeechRecognition()
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -4346,6 +4226,356 @@ onUnmounted(() => {
     height: 20px;
     min-width: 20px;
     margin-left: 10px;
+  }
+}
+
+/* 下载选择弹窗样式 */
+.download-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 140, 66, 0.3) 0%, rgba(139, 69, 19, 0.6) 100%);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: overlayFadeIn 0.3s ease;
+}
+
+@keyframes overlayFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.download-modal {
+  background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
+  border: 6px solid #f7a985;
+  border-radius: 25px;
+  padding: 30px;
+  box-shadow: 
+    0px 12px 24px rgba(255, 99, 71, 0.4),
+    0px 6px 12px rgba(255, 140, 66, 0.3),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s cubic-bezier(.4, 2, .6, 1);
+}
+
+@keyframes modalSlideIn {
+  0% {
+    transform: translateY(-50px) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.download-modal::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+  animation: modalShimmer 3s linear infinite;
+}
+
+@keyframes modalShimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  position: relative;
+  z-index: 2;
+}
+
+.modal-header h3 {
+  color: #8b4513;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+  text-shadow: 2px 2px 0px #ffd700;
+  letter-spacing: 1px;
+  font-family: 'CuteFont64', cursive;
+}
+
+.modal-close {
+  cursor: pointer;
+  font-size: 1.8rem;
+  color: #8b4513;
+  font-weight: 800;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffb347, #ff8c42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0px 4px 8px rgba(255, 140, 66, 0.3);
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  border: 3px solid #f7a985;
+}
+
+.modal-close:hover {
+  transform: translateY(-2px) scale(1.1);
+  background: linear-gradient(135deg, #ff8c42, #ff6347);
+  box-shadow: 0px 6px 12px rgba(255, 140, 66, 0.4);
+}
+
+.modal-close:active {
+  transform: translateY(0) scale(1);
+}
+
+.modal-content {
+  position: relative;
+  z-index: 2;
+}
+
+.download-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.download-option {
+  background: linear-gradient(135deg, #fff8dc 0%, #fffacd 100%);
+  border: 4px solid #f7a985;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+  box-shadow: 
+    0px 4px 8px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.download-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.download-option:hover::before {
+  left: 100%;
+}
+
+.download-option:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: #ff8c42;
+  box-shadow: 
+    0px 8px 16px rgba(255, 140, 66, 0.3),
+    0px 4px 8px rgba(255, 99, 71, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.6);
+}
+
+.download-option:active {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 
+    0px 6px 12px rgba(255, 140, 66, 0.2),
+    inset 0px 2px 0px rgba(255, 255, 255, 0.4);
+}
+
+.option-icon {
+  font-size: 3rem;
+  min-width: 60px;
+  text-align: center;
+  filter: drop-shadow(2px 2px 4px rgba(255, 140, 66, 0.3));
+  animation: optionIconBounce 2s ease-in-out infinite;
+}
+
+@keyframes optionIconBounce {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.option-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #8b4513;
+  margin: 0;
+  text-shadow: 1px 1px 0px #ffd700;
+  letter-spacing: 0.5px;
+  font-family: 'CuteFont64', cursive;
+}
+
+.option-desc {
+  font-size: 1rem;
+  color: #cd853f;
+  margin: 0;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.3px;
+  font-family: 'CuteFont64', cursive;
+}
+
+/* 拖拽功能样式 */
+.preview-item.draggable {
+  cursor: move;
+  transition: all 0.3s cubic-bezier(.4, 2, .6, 1);
+}
+
+.preview-item.draggable:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0px 8px 16px rgba(255, 99, 71, 0.3),
+    0px 4px 8px rgba(255, 140, 66, 0.2);
+}
+
+.preview-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  filter: blur(2px);
+  z-index: 100;
+}
+
+.preview-item.drag-over {
+  border-color: #ff8c42 !important;
+  box-shadow: 
+    0px 0px 20px rgba(255, 140, 66, 0.6),
+    0px 4px 8px rgba(255, 99, 71, 0.3),
+    inset 0px 0px 20px rgba(255, 215, 0, 0.3);
+  animation: dragOverPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes dragOverPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.preview-item.draggable .preview-image::after {
+  content: '🔄';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: rgba(255, 140, 66, 0.9);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.preview-item.draggable:hover .preview-image::after {
+  opacity: 1;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .download-modal {
+    max-width: 350px;
+    padding: 20px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.5rem;
+  }
+
+  .modal-close {
+    width: 35px;
+    height: 35px;
+    font-size: 1.5rem;
+  }
+
+  .download-option {
+    padding: 15px;
+    gap: 10px;
+  }
+
+  .option-icon {
+    font-size: 2.5rem;
+    min-width: 50px;
+  }
+
+  .option-title {
+    font-size: 1.2rem;
+  }
+
+  .option-desc {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .download-modal {
+    max-width: 300px;
+    padding: 15px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.3rem;
+  }
+
+  .modal-close {
+    width: 30px;
+    height: 30px;
+    font-size: 1.3rem;
+  }
+
+  .download-option {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .option-icon {
+    font-size: 2rem;
+    min-width: 40px;
+  }
+
+  .option-title {
+    font-size: 1rem;
+  }
+
+  .option-desc {
+    font-size: 0.8rem;
   }
 }
 </style>
