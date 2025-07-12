@@ -158,7 +158,7 @@
                                     </el-button>
                                 </div>
                             </div>
-                            <textarea v-model="objectPrompt" placeholder="详细描述你画的物体，比如：一只可爱的橘色小猫、一朵向日葵、一座粉色城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                            <textarea v-model="objectPrompt" placeholder="详细描述你想画的物体，比如：一只可爱的小猫、一朵向日葵、一座城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                         </div>
 
                         <!-- 颜色描述输入 -->
@@ -185,7 +185,7 @@
                                     </el-button>
                                 </div>
                             </div>
-                            <textarea v-model="colorPrompt" placeholder="描述你想生成的图片，比如：橙色小猫在草地上奔跑、红裙子小女生在跳舞、小王子坐在星空下..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                            <textarea v-model="colorPrompt" placeholder="描述你想生成的图片，比如：黄色小猫在草地上奔跑，穿红裙子的女生在跳舞，小王子坐在星空下..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                         </div>
                     </div>
                     
@@ -232,7 +232,7 @@
                                 </el-button>
                             </div>
                         </div>
-                        <textarea v-model="objectPrompt" placeholder="详细描述你画的物体，比如：一只可爱的橘色小猫、一朵向日葵、一座粉色城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                        <textarea v-model="objectPrompt" placeholder="详细描述你想画的物体，比如：一只可爱的小猫、一朵向日葵、一座城堡..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                     </div>
 
                     <!-- 颜色描述输入 -->
@@ -259,7 +259,7 @@
                                 </el-button>
                             </div>
                         </div>
-                        <textarea v-model="colorPrompt" placeholder="描述你想生成的图片，比如：橙色小猫在草地上奔跑、红裙子小女生在跳舞、小王子坐在星空下..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
+                        <textarea v-model="colorPrompt" placeholder="描述你想生成的图片，比如：黄色小猫在草地上奔跑，穿红裙子的女生在跳舞，小王子坐在星空下..." class="prompt-textarea" rows="3" @input="handlePromptInput"></textarea>
                     </div>
                 </div>
 

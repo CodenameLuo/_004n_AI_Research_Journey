@@ -12,7 +12,6 @@ declare module 'vue' {
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
-    ElSkeleton: typeof import('element-plus/es')['ElSkeleton']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     Gallery: typeof import('./src/components/Gallery.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
