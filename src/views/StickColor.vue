@@ -164,7 +164,7 @@
                         <!-- 颜色描述输入 -->
                         <div class="input-group">
                             <div class="input-header">
-                                <label>你想要的颜色？</label>
+                                <label>你最想看到什么？（颜色、动作、表情、背景）</label>
                                 <div class="input-controls">
                                     <div class="voice-input-btn" :class="{ 'recording': isRecording && recordingType === 'color' }" @mousedown="startRecording('color')" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording('color')" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording && recordingType === 'color' ? '录音中...' : '按住说话'">
                                         <el-icon v-if="!(isRecording && recordingType === 'color')">
