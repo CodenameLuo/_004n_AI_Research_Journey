@@ -2059,7 +2059,8 @@ onUnmounted(() => {
   padding: 25px;
   border: 6px solid #f7a985;
   box-shadow: 0px 10px #ff6347;
-  height: fit-content;
+  /* height: fit-content; */
+  min-height: 100vh;
 }
 
 .params-form {
