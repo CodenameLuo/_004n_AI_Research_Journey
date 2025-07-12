@@ -86,7 +86,7 @@
         <div class="section-title">
           <h2>📷 上传照片</h2>
         </div>
-        
+
         <!-- 自拍照上传 -->
         <div class="selfie-upload">
           <el-upload class="selfie-uploader" :show-file-list="false" :before-upload="handleSelfieUpload" accept=".jpg,.jpeg,.png" drag>
@@ -116,55 +116,44 @@
         <div class="section-title">
           <h2>📖 故事描述</h2>
         </div>
-        
+
         <!-- 图片风格选择 -->
         <div class="style-form">
           <div class="form-item">
             <label>图片风格</label>
             <div class="custom-select-wrapper">
-              <div 
-                class="custom-select" 
-                :class="{ 'is-open': isStyleSelectOpen }"
-                @click="toggleStyleSelect"
-              >
+              <div class="custom-select" :class="{ 'is-open': isStyleSelectOpen }" @click="toggleStyleSelect">
                 <div class="select-display">
-                  {{ userInfo.style ? styleOptions.find(opt => opt.value === userInfo.style)?.label : '请选择图片风格' }}
+                  {{userInfo.style ? styleOptions.find(opt => opt.value === userInfo.style)?.label : '请选择图片风格'}}
                 </div>
                 <div class="select-arrow">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7 10l5 5 5-5z"/>
+                    <path d="M7 10l5 5 5-5z" />
                   </svg>
                 </div>
               </div>
               <div class="select-options" v-show="isStyleSelectOpen">
-                <div 
-                  class="select-option"
-                  :class="{ 'is-selected': userInfo.style === option.value }"
-                  v-for="option in styleOptions" 
-                  :key="option.value"
-                  @click="selectStyle(option.value)"
-                >
+                <div class="select-option" :class="{ 'is-selected': userInfo.style === option.value }" v-for="option in styleOptions" :key="option.value" @click="selectStyle(option.value)">
                   {{ option.label }}
                 </div>
               </div>
             </div>
+          </div>
+          
+          <!-- 性别选择 -->
+          <div class="form-item-row">
+            <label>性别</label>
+            <el-radio-group v-model="userInfo.gender" size="large">
+              <el-radio-button value="male">👦 男孩</el-radio-button>
+              <el-radio-button value="female">👧 女孩</el-radio-button>
+            </el-radio-group>
           </div>
         </div>
 
         <div class="description-content">
           <div class="description-header">
             <div class="description-controls">
-              <div 
-                class="voice-input-btn" 
-                :class="{ 'recording': isRecording }"
-                @mousedown="startRecording"
-                @mouseup="stopRecording"
-                @mouseleave="stopRecording"
-                @touchstart.passive="startRecording"
-                @touchend.passive="stopRecording"
-                @touchcancel.passive="stopRecording"
-                :title="isRecording ? '录音中...' : '按住说话'"
-              >
+              <div class="voice-input-btn" :class="{ 'recording': isRecording }" @mousedown="startRecording" @mouseup="stopRecording" @mouseleave="stopRecording" @touchstart.passive="startRecording" @touchend.passive="stopRecording" @touchcancel.passive="stopRecording" :title="isRecording ? '录音中...' : '按住说话'">
                 <el-icon v-if="!isRecording">
                   <Microphone />
                 </el-icon>
@@ -175,13 +164,7 @@
                   </el-icon>
                 </div>
               </div>
-              <el-button 
-                type="warning" 
-                size="small" 
-                @click="clearDescription"
-                :disabled="!userInfo.description.trim()"
-                class="clear-btn"
-              >
+              <el-button type="warning" size="small" @click="clearDescription" :disabled="!userInfo.description.trim()" class="clear-btn">
                 <el-icon>
                   <Delete />
                 </el-icon>
@@ -189,35 +172,22 @@
               </el-button>
             </div>
           </div>
-          
-          <textarea 
-            v-model="userInfo.description" 
-            placeholder="请详细描述你想要的漫画场景，支持两种分镜方式：
+
+          <textarea v-model="userInfo.description" placeholder="请详细描述你想要的漫画场景，支持两种分镜方式：
 1. 换行分镜：每行一个场景，换行分镜
 2. 句号分镜：一整段文本，按句号自动分镜
 
-示例：我站在樱花树下，穿着校服，背景是蓝天白云。我手里拿着一本书，表情很开心。突然下起了雨，我在樱花树下避雨。" 
-            class="description-textarea" 
-            rows="12"
-            @input="handleDescriptionInput"
-          ></textarea>
-          
+示例：我站在樱花树下，穿着校服，背景是蓝天白云。我手里拿着一本书，表情很开心。突然下起了雨，我在樱花树下避雨。" class="description-textarea" rows="12" @input="handleDescriptionInput"></textarea>
+
           <div class="description-footer">
-                      <div class="word-count">
-            字数：{{ userInfo.description.length }}
-          </div>
+            <div class="word-count">
+              字数：{{ userInfo.description.length }}
+            </div>
           </div>
         </div>
-        
+
         <div class="generate-btn-wrapper">
-          <el-button 
-            type="primary" 
-            size="large" 
-            @click="generateComic" 
-            :loading="isGenerating" 
-            :disabled="!selfieImage || !userInfo.style || !userInfo.description.trim()"
-            class="generate-btn"
-          >
+          <el-button type="primary" size="large" @click="generateComic" :loading="isGenerating" :disabled="!selfieImage || !userInfo.style || !userInfo.gender || !userInfo.description.trim()" class="generate-btn">
             <el-icon>
               <MagicStick />
             </el-icon>
@@ -234,26 +204,18 @@
 
         <!-- 右上角操作按钮 -->
         <div class="output-corner-actions" v-if="generatedComic">
-          <div 
-            class="corner-button download-btn" 
-            @click="downloadComic" 
-            title="下载漫画"
-          >
+          <div class="corner-button download-btn" @click="downloadComic" title="下载漫画">
             <el-icon>
               <Download />
             </el-icon>
           </div>
-          <div 
-            class="corner-button share-btn" 
-            @click="shareComic" 
-            title="分享漫画"
-          >
+          <div class="corner-button share-btn" @click="shareComic" title="分享漫画">
             <el-icon>
               <Share />
             </el-icon>
           </div>
         </div>
-        
+
         <div class="comic-preview">
           <div class="preview-placeholder" v-if="!generatedComic">
             <el-icon class="placeholder-icon">
@@ -271,16 +233,11 @@
 
     <!-- 原生消息提示容器 -->
     <div class="native-message-container">
-      <div 
-        v-for="message in messages" 
-        :key="message.id"
-        :class="[
-          'native-message', 
-          `native-message--${message.type}`,
-          { 'native-message--visible': message.visible }
-        ]"
-        @click="closeMessage(message.id)"
-      >
+      <div v-for="message in messages" :key="message.id" :class="[
+        'native-message',
+        `native-message--${message.type}`,
+        { 'native-message--visible': message.visible }
+      ]" @click="closeMessage(message.id)">
         <div class="native-message__icon">
           <span v-if="message.type === 'success'">✅</span>
           <span v-else-if="message.type === 'error'">❌</span>
@@ -301,6 +258,7 @@ import { Plus, Delete, Picture, MagicStick, Download, Share, Microphone } from '
 // 响应式数据
 const userInfo = reactive({
   style: '',
+  gender: '',
   description: '' // 一整段描述
 })
 
@@ -355,9 +313,9 @@ const showMessage = (content, type = 'info', duration = 3000) => {
     type, // success, error, warning, info
     visible: true
   }
-  
+
   messages.value.push(message)
-  
+
   // 自动隐藏
   setTimeout(() => {
     const index = messages.value.findIndex(m => m.id === id)
@@ -399,13 +357,13 @@ const closeMessage = (id) => {
 // 文件上传处理
 const handleSelfieUpload = (file) => {
   if (!validateImage(file)) return false
-  
+
   // 确保文件有正确的MIME类型
   if (!file.type.startsWith('image/')) {
     NativeMessage.error('请上传有效的图片文件！')
     return false
   }
-  
+
   selfieImage.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -466,19 +424,23 @@ const generateComic = async () => {
     NativeMessage.warning('请选择图片风格！')
     return
   }
+  if (!userInfo.gender) {
+    NativeMessage.warning('请选择性别！')
+    return
+  }
   if (!userInfo.description.trim()) {
     NativeMessage.warning('请填写故事描述！')
     return
   }
-  
+
   isGenerating.value = true
-  
+
   try {
     NativeMessage.info('正在生成您的专属漫画，请稍候...')
-    
+
     // 处理描述文本，支持换行分镜和句号分镜
     let processedDescription = userInfo.description.trim()
-    
+
     // 检查是否使用换行分镜
     if (processedDescription.includes('\n')) {
       // 已经有换行符，保持现有的换行分镜方式
@@ -491,7 +453,7 @@ const generateComic = async () => {
         .split(/[。．.]+/)  // 分割句号（中文句号、全角句号、英文句号）
         .map(sentence => sentence.trim())
         .filter(sentence => sentence.length > 0)
-      
+
       // 将分割后的句子用换行连接，这样后端可以按换行处理
       processedDescription = sentences.join('\n')
       console.log('句号分镜结果:', sentences)
@@ -499,53 +461,59 @@ const generateComic = async () => {
       // 既没有换行也没有句号，作为单个场景
       console.log('单场景模式')
     }
-    
+
+    // 根据性别选择，在描述中添加性别信息
+    const genderText = userInfo.gender === 'male' ? '男孩' : '女孩'
+    const enhancedDescription = `主角是一个${genderText}，${processedDescription}`
+
     // 准备FormData
     const formData = new FormData()
     formData.append('selfie', selfieImage.value)
     formData.append('style', userInfo.style)
-    formData.append('description', processedDescription)
-    
+    formData.append('description', enhancedDescription)
+    formData.append('gender', userInfo.gender)
+
     console.log('发送请求到Flask后端...')
     console.log('风格:', userInfo.style)
-    console.log('描述:', userInfo.description.trim())
-    
+    console.log('性别:', userInfo.gender)
+    console.log('描述:', enhancedDescription)
+
     // 调用Flask后端API
     const response = await fetch(`${API_BASE_URL}/generate-comic`, {
       method: 'POST',
       body: formData
     })
-    
+
     const result = await response.json()
-    
+
     if (!response.ok) {
       throw new Error(result.error || '请求失败')
     }
-    
+
     if (result.success && result.comic_url) {
       generatedComic.value = result.comic_url
       currentSessionId.value = result.session_id
-      
+
       // 构建成功消息
       let successMessage = `您的专属漫画生成成功！使用了${result.style_used}风格，`
       successMessage += `采用${result.split_type}方式，包含${result.scenes_count}个场景。`
-      
+
       // 如果有场景预览，显示前几个场景
       if (result.scenes && result.scenes.length > 0) {
         const scenePreview = result.scenes.slice(0, 2).join('；')
         successMessage += `场景预览：${scenePreview}...`
       }
-      
+
       NativeMessage.success(successMessage)
     } else {
       throw new Error('服务器返回数据格式错误')
     }
-    
+
   } catch (error) {
     console.error('生成错误:', error)
-    
+
     let errorMessage = '漫画生成失败，请重试！'
-    
+
     if (error.message) {
       if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
         errorMessage = '网络连接失败，请检查Flask服务器是否启动 (http://localhost:5000)'
@@ -553,7 +521,7 @@ const generateComic = async () => {
         errorMessage = error.message
       }
     }
-    
+
     NativeMessage.error(errorMessage)
     generatedComic.value = null
     currentSessionId.value = null
@@ -568,12 +536,12 @@ const downloadComic = async () => {
     NativeMessage.warning('请先生成漫画！')
     return
   }
-  
+
   if (!currentSessionId.value) {
     NativeMessage.warning('会话信息丢失，无法下载！')
     return
   }
-  
+
   try {
     // 如果是base64图片，直接下载
     if (generatedComic.value.startsWith('data:image')) {
@@ -591,7 +559,7 @@ const downloadComic = async () => {
       link.click()
       NativeMessage.success('开始下载漫画...')
     }
-    
+
   } catch (error) {
     console.error('下载失败:', error)
     NativeMessage.error('下载失败！')
@@ -604,17 +572,17 @@ const shareComic = async () => {
     NativeMessage.warning('请先生成漫画！')
     return
   }
-  
+
   try {
     NativeMessage.info('准备分享您的漫画作品...')
-    
+
     // 如果支持Web Share API
     if (navigator.share && generatedComic.value.startsWith('data:image')) {
       // 将base64转换为Blob进行分享
       const response = await fetch(generatedComic.value)
       const blob = await response.blob()
       const file = new File([blob], 'AI_漫画.png', { type: 'image/png' })
-      
+
       await navigator.share({
         title: 'AI漫画作品',
         text: `看看我用AI生成的漫画！风格：${userInfo.style}`,
@@ -637,7 +605,7 @@ const shareComic = async () => {
         NativeMessage.info('您的漫画已准备好分享！可以右键保存图片进行分享。')
       }
     }
-    
+
   } catch (error) {
     console.error('分享失败:', error)
     // 如果分享失败，提供备用方案
@@ -678,7 +646,7 @@ const initSpeechRecognition = () => {
 
     isRecognitionSupported.value = true
     recognition.value = new SpeechRecognition()
-    
+
     // 配置语音识别
     recognition.value.continuous = true
     recognition.value.interimResults = true
@@ -688,28 +656,28 @@ const initSpeechRecognition = () => {
     // 识别结果处理
     recognition.value.onresult = (event) => {
       let finalTranscript = ''
-      
+
       // 只处理最终确定的结果，避免重复输入
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
           finalTranscript += event.results[i][0].transcript
         }
       }
-      
+
       // 只有当有最终确定的转录结果时才处理
       if (finalTranscript.trim()) {
         if (userInfo.description.trim()) {
           // 检查当前描述是否以标点符号结尾
           const lastChar = userInfo.description.trim().slice(-1)
           const needsSeparator = !['.', '。', ',', '，', '!', '！', '?', '？', ';', '；'].includes(lastChar)
-          
+
           // 添加新的语音输入内容
           const separator = needsSeparator ? '，' : ''
           userInfo.description += separator + finalTranscript
-                  } else {
-            // 如果描述为空，直接设置
-            userInfo.description = finalTranscript
-          }
+        } else {
+          // 如果描述为空，直接设置
+          userInfo.description = finalTranscript
+        }
       }
     }
 
@@ -725,7 +693,7 @@ const initSpeechRecognition = () => {
       console.error('语音识别错误:', event.error)
       isRecording.value = false
       isRecognitionActive.value = false
-      
+
       switch (event.error) {
         case 'no-speech':
           NativeMessage.warning('没有检测到语音输入')
@@ -767,7 +735,7 @@ const startRecording = () => {
   }
 
   isRecording.value = true
-  
+
   try {
     recognition.value.start()
   } catch (error) {
@@ -920,15 +888,20 @@ onUnmounted(() => {
 }
 
 @keyframes waveMove {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0%) scaleY(0.8) rotate(-2deg);
   }
+
   25% {
     transform: translateX(5%) scaleY(1.1) rotate(1deg);
   }
+
   50% {
     transform: translateX(10%) scaleY(1.3) rotate(-1deg);
   }
+
   75% {
     transform: translateX(7%) scaleY(1.0) rotate(2deg);
   }
@@ -1044,14 +1017,17 @@ onUnmounted(() => {
     opacity: 0;
     transform: translateX(0) scale(0);
   }
+
   10% {
     opacity: 1;
     transform: translateX(0) scale(1);
   }
+
   90% {
     opacity: 1;
     transform: translateX(20px) scale(1);
   }
+
   100% {
     top: -10%;
     opacity: 0;
@@ -1065,10 +1041,12 @@ onUnmounted(() => {
     transform: scale(1);
     opacity: 1;
   }
+
   50% {
     transform: scale(1.3);
     opacity: 0.7;
   }
+
   100% {
     transform: scale(0);
     opacity: 0;
@@ -1091,6 +1069,7 @@ onUnmounted(() => {
     opacity: 1;
     transform: translate(0, 0) scale(1);
   }
+
   100% {
     opacity: 0;
     transform: translate(calc(cos(var(--angle)) * var(--distance)),
@@ -1383,9 +1362,12 @@ onUnmounted(() => {
 
 /* 动画关键帧 */
 @keyframes decorationFloat {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-10px) rotate(180deg);
   }
@@ -1395,16 +1377,20 @@ onUnmounted(() => {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
 }
 
 @keyframes starTwinkle {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.8;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.2);
@@ -1412,10 +1398,13 @@ onUnmounted(() => {
 }
 
 @keyframes glowPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
     transform: translate(-50%, -50%) scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: translate(-50%, -50%) scale(1.1);
@@ -1423,22 +1412,28 @@ onUnmounted(() => {
 }
 
 @keyframes iconBounce {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-5px) rotate(10deg);
   }
 }
 
 @keyframes textGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     text-shadow:
       3px 3px 0px #ffd700,
       6px 6px 0px #fff8dc,
       9px 9px 0px rgba(255, 99, 71, 0.3),
       0 0 20px rgba(255, 215, 0, 0.6);
   }
+
   50% {
     text-shadow:
       3px 3px 0px #ffd700,
@@ -1449,19 +1444,25 @@ onUnmounted(() => {
 }
 
 @keyframes charFloat {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-8px);
   }
 }
 
 @keyframes lineExpand {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.3;
     transform: scaleX(0.5);
   }
+
   50% {
     opacity: 0.8;
     transform: scaleX(1);
@@ -1469,12 +1470,15 @@ onUnmounted(() => {
 }
 
 @keyframes highlightPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     text-shadow:
       2px 2px 0px #ffd700,
       4px 4px 0px #fff8dc,
       0 0 10px rgba(255, 215, 0, 0.8);
   }
+
   50% {
     text-shadow:
       2px 2px 0px #ffd700,
@@ -1488,9 +1492,11 @@ onUnmounted(() => {
     transform: translate(-50%, -100%) rotate(var(--start-rotation, 0deg));
     opacity: 0.3;
   }
+
   50% {
     opacity: 0.7;
   }
+
   100% {
     transform: translate(-50%, -100%) rotate(calc(var(--start-rotation, 0deg) + 360deg));
     opacity: 0.3;
@@ -1592,6 +1598,21 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.form-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.form-item-row label {
+  color: #8b4513;
+  font-size: 1.2rem;
+  text-shadow: 1px 1px 0px #ffd700;
+  letter-spacing: 0.5px;
+  min-width: 60px;
 }
 
 .description-textarea {
@@ -1709,8 +1730,8 @@ onUnmounted(() => {
 .description-controls .voice-input-btn.recording {
   background: linear-gradient(135deg, #ff6347, #ff4500);
   animation: voiceButtonPulse 1s ease-in-out infinite;
-  box-shadow: 
-    0 3px 6px rgba(0, 0, 0, 0.2), 
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.2),
     0 0 20px rgba(255, 99, 71, 0.6);
 }
 
@@ -1864,7 +1885,7 @@ onUnmounted(() => {
 }
 
 /* Element Plus 组件字体统一覆盖 */
-.form-item :deep(.el-radio-button__inner), 
+.form-item :deep(.el-radio-button__inner),
 .form-item-row :deep(.el-radio-button__inner) {
   background: #fff8dc;
   color: #8b4513;
@@ -1876,7 +1897,7 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
 }
 
-.form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner), 
+.form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner),
 .form-item-row :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
   background: #ff8c42;
   color: #fff;
@@ -1913,8 +1934,8 @@ onUnmounted(() => {
   background-color: #fff8dc;
   border-color: #ffb347;
   transform: translateY(-2px);
-  box-shadow: 
-    inset 0px 2px 4px rgba(0, 0, 0, 0.1), 
+  box-shadow:
+    inset 0px 2px 4px rgba(0, 0, 0, 0.1),
     0px 6px 12px rgba(255, 140, 66, 0.3),
     0px 2px 6px rgba(255, 215, 0, 0.4);
 }
@@ -2055,9 +2076,12 @@ onUnmounted(() => {
 
 /* 语音按钮动画 */
 @keyframes voiceButtonPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(255, 99, 71, 0.7);
   }
+
   50% {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 8px rgba(255, 99, 71, 0);
   }
@@ -2068,6 +2092,7 @@ onUnmounted(() => {
     transform: translate(-50%, -50%) scale(0.8);
     opacity: 1;
   }
+
   100% {
     transform: translate(-50%, -50%) scale(1.5);
     opacity: 0;
@@ -2307,7 +2332,7 @@ onUnmounted(() => {
   border-radius: 20px;
   padding: 15px 20px;
   margin-bottom: 15px;
-  box-shadow: 
+  box-shadow:
     0px 8px 16px rgba(255, 99, 71, 0.3),
     0px 4px 8px rgba(255, 140, 66, 0.2),
     inset 0px 2px 0px rgba(255, 255, 255, 0.5);
@@ -2345,7 +2370,7 @@ onUnmounted(() => {
 
 .native-message:hover {
   transform: translateY(-3px) scale(1.02);
-  box-shadow: 
+  box-shadow:
     0px 12px 24px rgba(255, 99, 71, 0.4),
     0px 6px 12px rgba(255, 140, 66, 0.3),
     inset 0px 2px 0px rgba(255, 255, 255, 0.6);
@@ -2408,9 +2433,12 @@ onUnmounted(() => {
 }
 
 @keyframes successPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.1);
   }
@@ -2428,12 +2456,16 @@ onUnmounted(() => {
 }
 
 @keyframes errorShake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0);
   }
+
   25% {
     transform: translateX(-3px);
   }
+
   75% {
     transform: translateX(3px);
   }
@@ -2451,9 +2483,12 @@ onUnmounted(() => {
 }
 
 @keyframes warningFlash {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.6;
   }
@@ -2474,6 +2509,7 @@ onUnmounted(() => {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -2501,17 +2537,17 @@ onUnmounted(() => {
     gap: 15px;
     max-width: 100%;
   }
-  
+
   .upload-section {
     grid-column: 1;
     grid-row: 1;
   }
-  
+
   .description-section {
     grid-column: 1 / span 2;
     grid-row: 2;
   }
-  
+
   .output-section {
     grid-column: 2;
     grid-row: 1;
@@ -2520,7 +2556,7 @@ onUnmounted(() => {
   .comic-preview {
     min-height: 350px;
   }
-  
+
   .description-textarea {
     min-height: 200px;
     max-height: 300px;
@@ -2532,7 +2568,7 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
     gap: 15px;
   }
-  
+
   .upload-section,
   .description-section,
   .output-section {
@@ -2543,7 +2579,7 @@ onUnmounted(() => {
   .comic-preview {
     min-height: 280px;
   }
-  
+
   .description-textarea {
     min-height: 180px;
     max-height: 250px;
