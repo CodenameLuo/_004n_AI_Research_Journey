@@ -48,10 +48,12 @@
         <h1 class="title">
           <span class="title-icon">🎨</span>
           <span class="title-text">
-            <span class="title-char" style="--delay: 0s">A</span>
-            <span class="title-char" style="--delay: 0.1s">I</span>
-            <span class="title-char" style="--delay: 0.2s">研</span>
-            <span class="title-char" style="--delay: 0.3s">学</span>
+            <span class="title-char" style="--delay: 0s">我</span>
+            <span class="title-char" style="--delay: 0.1s">的</span>
+            <span class="title-char" style="--delay: 0.2s">A</span>
+            <span class="title-char" style="--delay: 0.3s">I</span>
+            <span class="title-char" style="--delay: 0.3s">旅</span>
+            <span class="title-char" style="--delay: 0.3s">记</span>
           </span>
         </h1>
 

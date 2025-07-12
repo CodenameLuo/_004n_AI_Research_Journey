@@ -177,7 +177,7 @@
 1. 换行分镜：每行一个场景，换行分镜
 2. 句号分镜：一整段文本，按句号自动分镜
 
-示例：我站在樱花树下，穿着校服，背景是蓝天白云。我手里拿着一本书，表情很开心。突然下起了雨，我在樱花树下避雨。" class="description-textarea" rows="12" @input="handleDescriptionInput"></textarea>
+示例：早上七点，被闹钟叫醒，起床洗脸刷牙。早饭吃了一个煎蛋和一杯热牛奶。我背上书包，跟小伙伴一起走路去学校。上午，在课堂上积极举手回答老师的提问。课间和同学们在走廊里玩耍。中午，在食堂吃饭，我最爱吃的米饭和西红柿炒蛋。下午体育课和同学们在操场奔跑玩耍、踢足球。放学妈妈接我回家······" class="description-textarea" rows="12" @input="handleDescriptionInput"></textarea>
 
           <div class="description-footer">
             <div class="word-count">
