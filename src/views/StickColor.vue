@@ -425,54 +425,128 @@ const containsChinese = (text) => {
     return /[\u4e00-\u9fa5]/.test(text)
 }
 
-// 翻译中文到英文（使用API）
+// 多翻译API支持
+const translateApis = [
+    // DeepL（免费API，质量更好）
+    {
+        name: 'DeepL',
+        url: (text) => `https://api-free.deepl.com/v2/translate`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: (text) => `auth_key=free&text=${encodeURIComponent(text)}&source_lang=ZH&target_lang=EN`,
+        method: 'POST',
+        parse: (data) => data.translations[0].text
+    },
+    // Google Translate (备用)
+    {
+        name: 'Google',
+        url: (text) => `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(text)}`,
+        method: 'GET',
+        parse: (data) => data[0][0][0]
+    },
+    // Microsoft Translator (备用)
+    {
+        name: 'Microsoft',
+        url: (text) => `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=zh&to=en`,
+        headers: { 
+            'Content-Type': 'application/json',
+            'Ocp-Apim-Subscription-Key': 'free' // 使用免费接口
+        },
+        body: (text) => JSON.stringify([{ text }]),
+        method: 'POST',
+        parse: (data) => data[0].translations[0].text
+    }
+]
+
+// 智能翻译函数
 const translateToEnglish = async (chineseText) => {
     if (!chineseText || !containsChinese(chineseText)) {
         return chineseText
     }
 
-    try {
-        // 使用Google Translate API（免费版本）
-        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
-
-        if (!response.ok) {
-            throw new Error(`翻译API请求失败: ${response.status}`)
+    // 预处理：清理多余的标点和空格
+    const cleanText = chineseText.trim().replace(/[，。！？；：""''（）【】]/g, ' ').replace(/\s+/g, ' ')
+    
+    // 尝试多个翻译API
+    for (let i = 0; i < translateApis.length; i++) {
+        const api = translateApis[i]
+        try {
+            console.log(`尝试使用 ${api.name} 翻译:`, cleanText)
+            
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 2000) // 2秒超时
+            
+            const fetchOptions = {
+                method: api.method,
+                signal: controller.signal,
+                headers: api.headers || {}
+            }
+            
+            if (api.body) {
+                fetchOptions.body = api.body(cleanText)
+            }
+            
+            const response = await fetch(api.url(cleanText), fetchOptions)
+            clearTimeout(timeoutId)
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`)
+            
+            const data = await response.json()
+            const translatedText = api.parse(data)
+            
+            if (translatedText && translatedText.trim()) {
+                console.log(`${api.name} 翻译成功:`, translatedText)
+                return translatedText.trim()
+            }
+            
+        } catch (error) {
+            console.warn(`${api.name} 翻译失败:`, error.message)
+            continue // 尝试下一个API
         }
-
-        const result = await response.json()
-
-        if (result && result[0] && result[0][0] && result[0][0][0]) {
-            return result[0][0][0]
-        }
-
-        // 如果API返回格式不正确，返回原文
-        return chineseText
-
-    } catch (error) {
-        console.error('翻译失败:', error)
-        // 翻译失败时返回原文
-        return chineseText
     }
+    
+    // 所有API都失败，返回原文
+    console.warn('所有翻译API都失败，返回原文')
+    return cleanText
 }
 
-// 智能翻译提示词（始终执行翻译）
-const smartTranslatePrompt = async (originalPrompt) => {
-    if (!originalPrompt) {
-        return originalPrompt
+// 智能提示词处理
+const smartPromptProcessing = (objectDesc, colorDesc) => {
+    const parts = []
+    
+    if (colorDesc) parts.push(colorDesc)
+    if (objectDesc) parts.push(objectDesc)
+    
+    let prompt = parts.join(' ')
+    
+    // 添加艺术增强词汇（只有在需要时）
+    if (prompt && !prompt.toLowerCase().includes('art') && !prompt.toLowerCase().includes('illustration')) {
+        prompt += ', digital art, detailed illustration'
     }
+    
+    return prompt
+}
 
+// 智能翻译提示词
+const smartTranslatePrompt = async (objectPrompt, colorPrompt) => {
     try {
-        const translatedPrompt = await translateToEnglish(originalPrompt.trim())
-
-        // 只在控制台记录翻译结果，不显示UI提示
-        if (translatedPrompt !== originalPrompt.trim() && containsChinese(originalPrompt)) {
-            console.log('提示词翻译:', originalPrompt, '->', translatedPrompt)
-        }
-
-        return translatedPrompt
+        // 并行翻译，提高速度
+        const [translatedObject, translatedColor] = await Promise.all([
+            objectPrompt ? translateToEnglish(objectPrompt.trim()) : '',
+            colorPrompt ? translateToEnglish(colorPrompt.trim()) : ''
+        ])
+        
+        // 智能组合提示词
+        const finalPrompt = smartPromptProcessing(translatedObject, translatedColor)
+        
+        console.log('提示词处理完成:', {
+            原始: { objectPrompt, colorPrompt },
+            最终: finalPrompt
+        })
+        
+        return finalPrompt
     } catch (error) {
-        console.error('智能翻译失败:', error)
-        return originalPrompt
+        console.error('翻译失败:', error)
+        return [objectPrompt, colorPrompt].filter(Boolean).join(' ')
     }
 }
 
@@ -684,16 +758,8 @@ const generateImage = async () => {
         // 获取画布图像数据
         const imgData = canvas.value.toDataURL("image/png")
 
-        // 构建完整的提示词：物体描述 + 颜色描述
-        let fullPrompt = objectPrompt.value.trim()
-        
-        // 添加颜色描述（如果有）
-        if (colorPrompt.value.trim()) {
-            fullPrompt += ', ' + colorPrompt.value.trim()
-        }
-
-        // 直接翻译用户的提示词
-        const userPrompt = await smartTranslatePrompt(fullPrompt)
+        // 使用改进的智能翻译处理提示词
+        const userPrompt = await smartTranslatePrompt(objectPrompt.value, colorPrompt.value)
 
         // 使用通用的负面提示词
         const negativePrompt = "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
