@@ -425,128 +425,77 @@ const containsChinese = (text) => {
     return /[\u4e00-\u9fa5]/.test(text)
 }
 
-// 多翻译API支持
-const translateApis = [
-    // DeepL（免费API，质量更好）
-    {
-        name: 'DeepL',
-        url: (text) => `https://api-free.deepl.com/v2/translate`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: (text) => `auth_key=free&text=${encodeURIComponent(text)}&source_lang=ZH&target_lang=EN`,
-        method: 'POST',
-        parse: (data) => data.translations[0].text
-    },
-    // Google Translate (备用)
-    {
-        name: 'Google',
-        url: (text) => `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(text)}`,
-        method: 'GET',
-        parse: (data) => data[0][0][0]
-    },
-    // Microsoft Translator (备用)
-    {
-        name: 'Microsoft',
-        url: (text) => `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=zh&to=en`,
-        headers: { 
-            'Content-Type': 'application/json',
-            'Ocp-Apim-Subscription-Key': 'free' // 使用免费接口
-        },
-        body: (text) => JSON.stringify([{ text }]),
-        method: 'POST',
-        parse: (data) => data[0].translations[0].text
-    }
-]
+// 优化绘画提示词（针对翻译后的英文）
+const optimizeDrawingPrompt = (translatedText) => {
+    if (!translatedText) return translatedText
+    
+    // 保持翻译后的完整描述，只做基本清理
+    let optimized = translatedText.trim()
+    
+    // 统一颜色词汇的拼写（英式→美式）
+    optimized = optimized.replace(/\bcolour(ed|ful)?\b/gi, (match) => 
+        match.toLowerCase().replace('colour', 'color')
+    )
+    
+    // 清理多余的空格
+    optimized = optimized.replace(/\s+/g, ' ').trim()
+    
+    return optimized
+}
 
-// 智能翻译函数
+// 翻译中文到英文（使用API）
 const translateToEnglish = async (chineseText) => {
     if (!chineseText || !containsChinese(chineseText)) {
         return chineseText
     }
 
-    // 预处理：清理多余的标点和空格
-    const cleanText = chineseText.trim().replace(/[，。！？；：""''（）【】]/g, ' ').replace(/\s+/g, ' ')
-    
-    // 尝试多个翻译API
-    for (let i = 0; i < translateApis.length; i++) {
-        const api = translateApis[i]
-        try {
-            console.log(`尝试使用 ${api.name} 翻译:`, cleanText)
-            
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 2000) // 2秒超时
-            
-            const fetchOptions = {
-                method: api.method,
-                signal: controller.signal,
-                headers: api.headers || {}
-            }
-            
-            if (api.body) {
-                fetchOptions.body = api.body(cleanText)
-            }
-            
-            const response = await fetch(api.url(cleanText), fetchOptions)
-            clearTimeout(timeoutId)
-            
-            if (!response.ok) throw new Error(`HTTP ${response.status}`)
-            
-            const data = await response.json()
-            const translatedText = api.parse(data)
-            
-            if (translatedText && translatedText.trim()) {
-                console.log(`${api.name} 翻译成功:`, translatedText)
-                return translatedText.trim()
-            }
-            
-        } catch (error) {
-            console.warn(`${api.name} 翻译失败:`, error.message)
-            continue // 尝试下一个API
-        }
-    }
-    
-    // 所有API都失败，返回原文
-    console.warn('所有翻译API都失败，返回原文')
-    return cleanText
-}
-
-// 智能提示词处理
-const smartPromptProcessing = (objectDesc, colorDesc) => {
-    const parts = []
-    
-    if (colorDesc) parts.push(colorDesc)
-    if (objectDesc) parts.push(objectDesc)
-    
-    let prompt = parts.join(' ')
-    
-    // 添加艺术增强词汇（只有在需要时）
-    if (prompt && !prompt.toLowerCase().includes('art') && !prompt.toLowerCase().includes('illustration')) {
-        prompt += ', digital art, detailed illustration'
-    }
-    
-    return prompt
-}
-
-// 智能翻译提示词
-const smartTranslatePrompt = async (objectPrompt, colorPrompt) => {
     try {
-        // 并行翻译，提高速度
-        const [translatedObject, translatedColor] = await Promise.all([
-            objectPrompt ? translateToEnglish(objectPrompt.trim()) : '',
-            colorPrompt ? translateToEnglish(colorPrompt.trim()) : ''
-        ])
-        
-        // 智能组合提示词
-        const finalPrompt = smartPromptProcessing(translatedObject, translatedColor)
-        
-        console.log('提示词处理完成:', {
-            原始: { objectPrompt, colorPrompt },
-            最终: finalPrompt
-        })
-        
-        return finalPrompt
+        // 使用Google Translate API（免费版本）
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
+
+        if (!response.ok) {
+            throw new Error(`翻译API请求失败: ${response.status}`)
+        }
+
+        const result = await response.json()
+
+        if (result && result[0] && result[0][0] && result[0][0][0]) {
+            let translatedText = result[0][0][0]
+            
+            // 针对绘画场景优化翻译结果
+            translatedText = optimizeDrawingPrompt(translatedText)
+            
+            return translatedText
+        }
+
+        // 如果API返回格式不正确，返回原文
+        return chineseText
+
     } catch (error) {
         console.error('翻译失败:', error)
-        return [objectPrompt, colorPrompt].filter(Boolean).join(' ')
+        // 翻译失败时返回原文
+        return chineseText
+    }
+}
+
+// 智能翻译提示词（始终执行翻译）
+const smartTranslatePrompt = async (originalPrompt) => {
+    if (!originalPrompt) {
+        return originalPrompt
+    }
+
+    try {
+        const translatedPrompt = await translateToEnglish(originalPrompt.trim())
+
+        // 只在控制台记录翻译结果，不显示UI提示
+        if (translatedPrompt !== originalPrompt.trim() && containsChinese(originalPrompt)) {
+            console.log('提示词翻译:', originalPrompt, '->', translatedPrompt)
+        }
+
+        return translatedPrompt
+    } catch (error) {
+        console.error('智能翻译失败:', error)
+        return originalPrompt
     }
 }
 
@@ -758,8 +707,42 @@ const generateImage = async () => {
         // 获取画布图像数据
         const imgData = canvas.value.toDataURL("image/png")
 
-        // 使用改进的智能翻译处理提示词
-        const userPrompt = await smartTranslatePrompt(objectPrompt.value, colorPrompt.value)
+        // 智能组合提示词：按照中文表达习惯组合，然后翻译
+        let fullPrompt = ''
+        
+        const objectDesc = objectPrompt.value.trim()
+        const colorDesc = colorPrompt.value.trim()
+        
+        // 如果两个描述都有，按照"画一个[颜色]的[物体]"的格式组合
+        if (objectDesc && colorDesc) {
+            // 检查是否包含中文，决定组合方式
+            if (containsChinese(objectDesc) || containsChinese(colorDesc)) {
+                fullPrompt = `画一个${colorDesc}的${objectDesc}`
+            } else {
+                // 英文直接用形容词+名词的方式
+                fullPrompt = `${colorDesc} ${objectDesc}`
+            }
+        } else if (objectDesc) {
+            // 只有物体描述
+            if (containsChinese(objectDesc)) {
+                fullPrompt = `画一个${objectDesc}`
+            } else {
+                fullPrompt = objectDesc
+            }
+        } else {
+            // 理论上不会到这里，因为前面已经检查过objectPrompt必须有内容
+            fullPrompt = objectDesc
+        }
+
+        // 翻译组合后的提示词
+        const userPrompt = await smartTranslatePrompt(fullPrompt)
+        
+        // 调试日志：显示提示词处理过程
+        // console.log('提示词处理过程:')
+        // console.log('  物体描述:', objectDesc)
+        // console.log('  颜色描述:', colorDesc) 
+        // console.log('  组合后:', fullPrompt)
+        // console.log('  翻译后:', userPrompt)
 
         // 使用通用的负面提示词
         const negativePrompt = "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
@@ -783,17 +766,17 @@ const generateImage = async () => {
             init_images: [imgData],
             prompt: userPrompt,
             negative_prompt: negativePrompt,
-            steps: 40,
-            cfg_scale: 7.5,
+            steps: 30,
+            cfg_scale: 8,
             width: 512,
             height: 512,
             sampler_index: "DPM++ 2M Karras",
-            denoising_strength: 0.75, // 降低去噪强度，更好地保持草图结构
+            denoising_strength: 0.7, // 降低去噪强度，更好地保持草图结构
             controlnet_units: [{
                 input_image: imgData,
                 module: "scribble_hed",
                 model: controlNetModel,
-                weight: 1.2, // 增加ControlNet影响权重
+                weight: 1.1, // 增加ControlNet影响权重
                 guidance_start: 0.0,
                 guidance_end: 1.0,
                 processor_res: 512,
