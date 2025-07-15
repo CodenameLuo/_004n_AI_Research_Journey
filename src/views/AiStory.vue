@@ -117,30 +117,8 @@
           <h2>📖 故事描述</h2>
         </div>
 
-        <!-- 图片风格选择 -->
+        <!-- 性别选择 -->
         <div class="style-form">
-          <div class="form-item">
-            <label>图片风格</label>
-            <div class="custom-select-wrapper">
-              <div class="custom-select" :class="{ 'is-open': isStyleSelectOpen }" @click="toggleStyleSelect">
-                <div class="select-display">
-                  {{userInfo.style ? styleOptions.find(opt => opt.value === userInfo.style)?.label : '请选择图片风格'}}
-                </div>
-                <div class="select-arrow">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7 10l5 5 5-5z" />
-                  </svg>
-                </div>
-              </div>
-              <div class="select-options" v-show="isStyleSelectOpen">
-                <div class="select-option" :class="{ 'is-selected': userInfo.style === option.value }" v-for="option in styleOptions" :key="option.value" @click="selectStyle(option.value)">
-                  {{ option.label }}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 性别选择 -->
           <div class="form-item-row">
             <label>性别</label>
             <el-radio-group v-model="userInfo.gender" size="large">
@@ -187,7 +165,7 @@
         </div>
 
         <div class="generate-btn-wrapper">
-          <el-button type="primary" size="large" @click="generateComic" :loading="isGenerating" :disabled="!selfieImage || !userInfo.style || !userInfo.gender || !userInfo.description.trim()" class="generate-btn">
+          <el-button type="primary" size="large" @click="generateComic" :loading="isGenerating" :disabled="!selfieImage || !userInfo.gender || !userInfo.description.trim()" class="generate-btn">
             <el-icon>
               <MagicStick />
             </el-icon>
@@ -257,7 +235,7 @@ import { Plus, Delete, Picture, MagicStick, Download, Share, Microphone } from '
 
 // 响应式数据
 const userInfo = reactive({
-  style: '',
+  style: FIXED_STYLE, // 固定为日本漫画风
   gender: '',
   description: '' // 一整段描述
 })
@@ -281,21 +259,8 @@ const recognition = ref(null)
 const isRecognitionSupported = ref(false)
 const isRecognitionActive = ref(false)
 
-// 自定义下拉菜单状态
-const isStyleSelectOpen = ref(false)
-
-// 风格选项 - 匹配后端支持的风格名称
-const styleOptions = [
-  { label: '写实风', value: 'Realistic' },
-  { label: '日本漫画风', value: 'Japanese Anime' },
-  { label: '数字油画风', value: 'Digital Oil Painting' },
-  { label: '迪士尼皮克斯风', value: 'Disney Pixar' },
-  { label: '摄影写真风格', value: 'Photography' },
-  { label: '漫画书风格', value: 'Comic book' },
-  { label: '艺术线条风', value: 'Line art' },
-  { label: '黑白电影风', value: 'Film Noir' },
-  { label: '3D建模风', value: '3D Model' }
-]
+// 风格固定为日本漫画风
+const FIXED_STYLE = 'Japanese Anime'
 
 // Flask后端API配置
 // const API_BASE_URL = 'http://localhost:5000/api'
@@ -421,10 +386,7 @@ const generateComic = async () => {
     NativeMessage.warning('请先上传自拍照！')
     return
   }
-  if (!userInfo.style) {
-    NativeMessage.warning('请选择图片风格！')
-    return
-  }
+  // 移除风格验证，因为已经固定
   if (!userInfo.gender) {
     NativeMessage.warning('请选择性别！')
     return
@@ -496,7 +458,7 @@ const generateComic = async () => {
       currentSessionId.value = result.session_id
 
       // 构建成功消息
-      let successMessage = `您的专属漫画生成成功！使用了${result.style_used}风格，`
+      let successMessage = `您的专属日本漫画风漫画生成成功！`
       successMessage += `采用${result.split_type}方式，包含${result.scenes_count}个场景。`
 
       // 如果有场景预览，显示前几个场景
@@ -586,7 +548,7 @@ const shareComic = async () => {
 
       await navigator.share({
         title: 'AI漫画作品',
-        text: `看看我用AI生成的漫画！风格：${userInfo.style}`,
+        text: `看看我用AI生成的日本漫画风漫画！`,
         files: [file]
       })
       NativeMessage.success('分享成功！')
@@ -594,13 +556,13 @@ const shareComic = async () => {
       // 基本分享
       await navigator.share({
         title: 'AI漫画作品',
-        text: `看看我用AI生成的漫画！风格：${userInfo.style}。使用AI漫画生成器创作你的专属漫画！`
+        text: `看看我用AI生成的日本漫画风漫画！使用AI漫画生成器创作你的专属漫画！`
       })
       NativeMessage.success('分享成功！')
     } else {
       // 复制到剪贴板作为备用方案
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`看看我用AI生成的漫画！风格：${userInfo.style}。使用AI漫画生成器创作你的专属漫画！`)
+        await navigator.clipboard.writeText(`看看我用AI生成的日本漫画风漫画！使用AI漫画生成器创作你的专属漫画！`)
         NativeMessage.success('分享文案已复制到剪贴板！')
       } else {
         NativeMessage.info('您的漫画已准备好分享！可以右键保存图片进行分享。')
@@ -612,7 +574,7 @@ const shareComic = async () => {
     // 如果分享失败，提供备用方案
     if (navigator.clipboard) {
       try {
-        await navigator.clipboard.writeText(`看看我用AI生成的漫画！风格：${userInfo.style}`)
+        await navigator.clipboard.writeText(`看看我用AI生成的日本漫画风漫画！`)
         NativeMessage.warning('直接分享失败，但分享文案已复制到剪贴板！')
       } catch {
         NativeMessage.error('分享失败，请手动保存图片进行分享！')
@@ -623,16 +585,7 @@ const shareComic = async () => {
   }
 }
 
-// 自定义下拉菜单方法
-const toggleStyleSelect = () => {
-  isStyleSelectOpen.value = !isStyleSelectOpen.value
-}
 
-const selectStyle = (value) => {
-  userInfo.style = value
-  isStyleSelectOpen.value = false
-  NativeMessage.success(`已选择风格：${styleOptions.find(opt => opt.value === value)?.label}`)
-}
 
 // 语音识别功能初始化
 const initSpeechRecognition = () => {
@@ -796,23 +749,16 @@ const burstBubble = (event) => {
   }, 300)
 }
 
-// 点击外部关闭下拉菜单
-const handleClickOutside = (event) => {
-  const selectWrapper = event.target.closest('.custom-select-wrapper')
-  if (!selectWrapper) {
-    isStyleSelectOpen.value = false
-  }
-}
+
 
 // 组件挂载时初始化语音识别
 onMounted(() => {
   initSpeechRecognition()
-  document.addEventListener('click', handleClickOutside)
 })
 
 // 组件卸载时清理事件监听
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+  // 清理语音识别相关资源
 })
 </script>
 
@@ -1907,129 +1853,7 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
-/* 自定义下拉菜单样式 */
-.custom-select-wrapper {
-  position: relative;
-  width: 100%;
-}
 
-.custom-select {
-  border: 4px solid #f7a985;
-  border-radius: 20px;
-  background: #fffacd;
-  color: #8b4513;
-  box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 0.8em 1em;
-  font-size: 1.1rem;
-  width: 100%;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 48px;
-}
-
-.custom-select:hover {
-  background-color: #fff8dc;
-  border-color: #ffb347;
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0px 2px 4px rgba(0, 0, 0, 0.1),
-    0px 6px 12px rgba(255, 140, 66, 0.3),
-    0px 2px 6px rgba(255, 215, 0, 0.4);
-}
-
-.custom-select.is-open {
-  border-color: #ff8c42;
-  box-shadow: 0 0 0 4px rgba(255, 179, 71, 0.4), 0 4px 12px rgba(255, 215, 0, 0.6);
-  background-color: #fff8dc;
-  transform: translateY(-1px);
-}
-
-.select-display {
-  flex: 1;
-  text-align: left;
-}
-
-.select-arrow {
-  color: #ff8c42;
-  transition: transform 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.custom-select.is-open .select-arrow {
-  transform: rotate(180deg);
-}
-
-.select-options {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: #fff8dc;
-  border: 4px solid #ff8c42;
-  border-top: none;
-  border-radius: 0 0 20px 20px;
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  max-height: 300px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.select-option {
-  background: #fff8dc;
-  color: #8b4513;
-  font-size: 1.4rem;
-  padding: 16px 20px;
-  line-height: 1.8;
-  border-bottom: 1px solid #f7a985;
-  cursor: pointer;
-  min-height: 55px;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s ease;
-  letter-spacing: 0.5px;
-  width: 100%;
-  box-sizing: border-box;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.select-option:last-child {
-  border-bottom: none;
-  border-radius: 0 0 16px 16px;
-}
-
-.select-option:hover {
-  background: #ffb347 !important;
-  background-color: #ffb347 !important;
-  color: #fff !important;
-  font-weight: 800;
-  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
-  transform: scale(1.02);
-}
-
-.select-option.is-selected {
-  background: #ff8c42 !important;
-  background-color: #ff8c42 !important;
-  color: #fff !important;
-  font-weight: 800;
-  text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.5);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.select-option.is-selected:hover {
-  background: #ff6347 !important;
-  background-color: #ff6347 !important;
-}
 
 /* 语音按钮共用样式 */
 .voice-input-btn {
@@ -2653,17 +2477,7 @@ onUnmounted(() => {
     min-height: 200px;
   }
 
-  .custom-select {
-    font-size: 1rem;
-    padding: 0.7em 0.9em;
-    min-height: 42px;
-  }
 
-  .select-option {
-    font-size: 1.2rem;
-    padding: 14px 16px;
-    min-height: 50px;
-  }
 
   /* 描述区域移动端优化 */
   .description-controls {
