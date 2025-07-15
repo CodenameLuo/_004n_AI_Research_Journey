@@ -458,7 +458,7 @@ const generateComic = async () => {
       currentSessionId.value = result.session_id
 
       // 构建成功消息
-      let successMessage = `您的专属日本漫画风漫画生成成功！`
+      let successMessage = `您的漫画生成成功！`
       successMessage += `采用${result.split_type}方式，包含${result.scenes_count}个场景。`
 
       // 如果有场景预览，显示前几个场景
@@ -548,7 +548,7 @@ const shareComic = async () => {
 
       await navigator.share({
         title: 'AI漫画作品',
-        text: `看看我用AI生成的日本漫画风漫画！`,
+        text: `看看我用AI生成的漫画！`,
         files: [file]
       })
       NativeMessage.success('分享成功！')
@@ -556,13 +556,13 @@ const shareComic = async () => {
       // 基本分享
       await navigator.share({
         title: 'AI漫画作品',
-        text: `看看我用AI生成的日本漫画风漫画！使用AI漫画生成器创作你的专属漫画！`
+        text: `看看我用AI生成的漫画！使用AI漫画生成器创作你的专属漫画！`
       })
       NativeMessage.success('分享成功！')
     } else {
       // 复制到剪贴板作为备用方案
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`看看我用AI生成的日本漫画风漫画！使用AI漫画生成器创作你的专属漫画！`)
+        await navigator.clipboard.writeText(`看看我用AI生成的漫画！使用AI漫画生成器创作你的专属漫画！`)
         NativeMessage.success('分享文案已复制到剪贴板！')
       } else {
         NativeMessage.info('您的漫画已准备好分享！可以右键保存图片进行分享。')
@@ -574,7 +574,7 @@ const shareComic = async () => {
     // 如果分享失败，提供备用方案
     if (navigator.clipboard) {
       try {
-        await navigator.clipboard.writeText(`看看我用AI生成的日本漫画风漫画！`)
+        await navigator.clipboard.writeText(`看看我用AI生成的漫画！`)
         NativeMessage.warning('直接分享失败，但分享文案已复制到剪贴板！')
       } catch {
         NativeMessage.error('分享失败，请手动保存图片进行分享！')
