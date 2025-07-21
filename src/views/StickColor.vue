@@ -452,7 +452,9 @@ const translateToEnglish = async (chineseText) => {
 
     try {
         // 使用Google Translate API（免费版本）
-        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
+        // const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(chineseText)}`)
+        // 使用Google需要梯子，先换成myMemory翻译API,试试看
+        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chineseText)}&langpair=zh|en`)
 
         if (!response.ok) {
             throw new Error(`翻译API请求失败: ${response.status}`)
