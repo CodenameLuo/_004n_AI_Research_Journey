@@ -462,12 +462,17 @@ const translateToEnglish = async (chineseText) => {
 
         const result = await response.json()
 
+        console.log(result.responseData.translatedText);
+
+        return result.responseData.translatedText;
+
         if (result && result[0] && result[0][0] && result[0][0][0]) {
             let translatedText = result[0][0][0]
             
             // 针对绘画场景优化翻译结果
             translatedText = optimizeDrawingPrompt(translatedText)
             
+            console.log(translatedText);
             return translatedText
         }
 
@@ -494,6 +499,8 @@ const smartTranslatePrompt = async (originalPrompt) => {
         if (translatedPrompt !== originalPrompt.trim() && containsChinese(originalPrompt)) {
             console.log('提示词翻译:', originalPrompt, '->', translatedPrompt)
         }
+
+        console.log('smartTranslatePrompt翻译后的提示词:', translatedPrompt)
 
         return translatedPrompt
     } catch (error) {
@@ -741,11 +748,11 @@ const generateImage = async () => {
         const userPrompt = await smartTranslatePrompt(fullPrompt)
         
         // 调试日志：显示提示词处理过程
-        // console.log('提示词处理过程:')
-        // console.log('  物体描述:', objectDesc)
-        // console.log('  颜色描述:', colorDesc) 
-        // console.log('  组合后:', fullPrompt)
-        // console.log('  翻译后:', userPrompt)
+        console.log('提示词处理过程:')
+        console.log('  物体描述:', objectDesc)
+        console.log('  颜色描述:', colorDesc) 
+        console.log('  组合后:', fullPrompt)
+        console.log('  翻译后:', userPrompt)
 
         // 使用通用的负面提示词
         const negativePrompt = "realistic, photo, 3d, nude, nsfw, blurry, watermark, text, signature, ugly, disfigured, mutated, extra arms, extra legs, extra fingers, extra eyes, poorly drawn, low quality, bad anatomy, worst quality"
